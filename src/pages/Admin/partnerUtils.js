@@ -15,8 +15,11 @@ export const normalizePartnerDetail = (payload) => payload?.partner || payload?.
 
 export const getPartnerId = (partner) => partner?.id || partner?.partnerId || partner?._id;
 
+export const getPrimaryBusiness = (partner) =>
+  partner?.business || partner?.onboarding || partner?.businesses?.[0] || null;
+
 export const getBusinessName = (partner) =>
-  partner?.businessName || partner?.name || partner?.business?.name || partner?.onboarding?.businessName || 'Unnamed business';
+  partner?.businessName || getPrimaryBusiness(partner)?.name || partner?.name || 'Unnamed business';
 
 export const getOwnerName = (partner) =>
   partner?.ownerName || partner?.user?.name || partner?.user?.fullName || partner?.owner?.name || 'Not available';
@@ -28,17 +31,26 @@ export const getPhone = (partner) => partner?.phone || partner?.user?.phone || p
 export const getStatus = (partner) => partner?.status || partner?.partner?.status || 'PENDING';
 
 export const getCategory = (partner) =>
-  partner?.categoryName || partner?.category?.name || partner?.business?.category || partner?.category || 'Not available';
+  partner?.categoryName || getPrimaryBusiness(partner)?.category?.name || partner?.category?.name || partner?.business?.category || 'Not available';
 
 export const getAddress = (partner) => {
-  const onboarding = partner?.onboarding || partner?.business || partner;
+  const onboarding = getPrimaryBusiness(partner) || partner;
   return [onboarding?.address, onboarding?.city, onboarding?.state, onboarding?.pincode].filter(Boolean).join(', ');
 };
 
 export const getImageUrls = (partner) => {
-  const images = partner?.images || partner?.businessImages || partner?.business?.images || partner?.onboarding?.images || [];
-  return images
+  const business = getPrimaryBusiness(partner) || {};
+  const images = [
+    business?.logoUrl,
+    business?.coverImageUrl,
+    ...(partner?.images || partner?.businessImages || business?.images || []),
+  ];
+  return [...new Set(images)]
     .map((item) => (typeof item === 'string' ? item : item?.url || item?.path))
     .filter(Boolean);
 };
 
+export const getSubcategories = (partner) =>
+  (getPrimaryBusiness(partner)?.subcategories || partner?.subcategories || partner?.sportsTypes || [])
+    .map((item) => item?.subcategory || item)
+    .filter(Boolean);

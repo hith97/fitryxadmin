@@ -30,6 +30,11 @@ import Plans from './pages/Plans';
 import Staff from './pages/Staff';
 import Classes from './pages/Classes';
 import Subscriptions from './pages/Subscriptions';
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import AdminMembers from './pages/Admin/AdminMembers';
+import AdminBookings from './pages/Admin/AdminBookings';
+import AdminLeads from './pages/Admin/AdminLeads';
+import AdminPackages from './pages/Admin/AdminPackages';
 
 const queryClient = new QueryClient();
 
@@ -99,6 +104,11 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
+const DashboardRoute = () => {
+  const { currentUser } = useAuth();
+  return currentUser?.role === 'SUPER_ADMIN' ? <AdminDashboard /> : <Dashboard />;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -108,9 +118,13 @@ const AppRoutes = () => {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<DashboardRoute />} />
           <Route path="admin/partners" element={<Partners />} />
           <Route path="admin/partners/:id" element={<PartnerDetail />} />
+          <Route path="admin/members" element={<AdminMembers />} />
+          <Route path="admin/bookings" element={<AdminBookings />} />
+          <Route path="admin/leads" element={<AdminLeads />} />
+          <Route path="admin/packages" element={<AdminPackages />} />
           <Route path="members" element={<MembersList />} />
           <Route path="members/:id" element={<MemberDetail />} />
           <Route path="members/:id/subscriptions" element={<MemberDetail />} />

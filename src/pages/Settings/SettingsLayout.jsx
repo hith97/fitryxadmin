@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { label: 'Gym Profile',       path: '/settings/profile',          icon: Building2 },
+  { label: 'Profile',           path: '/settings/profile',          icon: Building2 },
   { label: 'Locations',         path: '/settings/locations',        icon: MapPin },
   { label: 'Account Settings',  path: '/settings/account',          icon: User2 },
   { label: 'Activity Log',      path: '/settings/activity',         icon: Activity },
@@ -38,10 +38,10 @@ const SettingsLayout = () => (
       {/* Sidebar */}
       <aside className="w-[220px] shrink-0 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm sticky top-6">
         <nav className="space-y-0.5">
-          {NAV_ITEMS.map(({ label, path, icon: Icon }) => (
+          {NAV_ITEMS.map((item) => (
             <NavLink
-              key={path}
-              to={path}
+              key={item.path}
+              to={item.path}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all ${
                   isActive
@@ -50,8 +50,8 @@ const SettingsLayout = () => (
                 }`
               }
             >
-              <Icon size={16} className="shrink-0" />
-              {label}
+              <item.icon size={16} className="shrink-0" />
+              {item.label}
             </NavLink>
           ))}
         </nav>

@@ -207,8 +207,8 @@ const ProfileSettings = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Gym Profile</h2>
-          <p className="mt-1 text-sm text-slate-500">Edit your gym's public profile and business details.</p>
+          <h2 className="text-xl font-bold text-slate-900">Profile</h2>
+          <p className="mt-1 text-sm text-slate-500">Edit your public profile and business details.</p>
         </div>
       </div>
 

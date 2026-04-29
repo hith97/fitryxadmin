@@ -1,57 +1,51 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, Filter, RefreshCw, Search, ShieldCheck, UserCheck, UserX } from 'lucide-react';
+import { Eye, PauseCircle, Pencil, RefreshCw, Search, ShieldCheck, Trash2, UserCheck, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
 import Table from '../../components/ui/Table';
-import { businessCategoryGroups } from '../Auth/authData';
 import { adminApi } from '../../services/adminApi';
 import {
-  getBusinessName,
-  getCategory,
-  getEmail,
-  getOwnerName,
-  getPartnerId,
-  getPhone,
-  getStatus,
-  normalizePartnerList,
-  partnerStatuses,
+  getBusinessName, getCategory, getEmail, getOwnerName,
+  getPartnerId, getPhone, getStatus, normalizePartnerList,
 } from './partnerUtils';
 
-const statusStyles = {
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-700',
-  VERIFIED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
+const STATUS_STYLES = {
+  PENDING:   'border-amber-200 bg-amber-50 text-amber-700',
+  VERIFIED:  'border-emerald-200 bg-emerald-50 text-emerald-700',
+  REJECTED:  'border-rose-200 bg-rose-50 text-rose-700',
   SUSPENDED: 'border-slate-200 bg-slate-100 text-slate-600',
+  PAUSED:    'border-orange-200 bg-orange-50 text-orange-700',
 };
 
 export const PartnerStatusBadge = ({ status }) => (
-  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyles[status] || statusStyles.PENDING}`}>
+  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${STATUS_STYLES[status] || STATUS_STYLES.PENDING}`}>
     {status}
   </span>
 );
+
+const ALL_STATUSES = ['', 'PENDING', 'VERIFIED', 'REJECTED', 'SUSPENDED', 'PAUSED'];
 
 const Partners = () => {
   const navigate = useNavigate();
   const [partners, setPartners] = useState([]);
   const [total, setTotal] = useState(0);
-  const [status, setStatus] = useState('PENDING');
+  const [status, setStatus] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState('');
 
+  useEffect(() => {
+    adminApi.getCategories().then(setCategories).catch(() => {});
+  }, []);
+
   const fetchPartners = async () => {
     setLoading(true);
-
     try {
-      const payload = await adminApi.getPartners({
-        status,
-        categoryId,
-        page,
-        limit: 10,
-      });
+      const payload = await adminApi.getPartners({ status, categoryId, page, limit: 15 });
       const normalized = normalizePartnerList(payload);
       setPartners(normalized.partners);
       setTotal(normalized.total);
@@ -62,56 +56,28 @@ const Partners = () => {
     }
   };
 
-  useEffect(() => {
-    // Loads the server-side page whenever filters change.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPartners();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, categoryId, page]);
+  useEffect(() => { fetchPartners(); }, [status, categoryId, page]); // eslint-disable-line
 
-  const filteredPartners = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return partners;
-    }
-
-    return partners.filter((partner) =>
-      `${getBusinessName(partner)} ${getOwnerName(partner)} ${getEmail(partner)} ${getPhone(partner)} ${getCategory(partner)}`
-        .toLowerCase()
-        .includes(query)
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return partners;
+    return partners.filter((p) =>
+      `${getBusinessName(p)} ${getOwnerName(p)} ${getEmail(p)} ${getPhone(p)} ${getCategory(p)}`.toLowerCase().includes(q)
     );
   }, [partners, search]);
 
   const runAction = async (partner, action) => {
     const id = getPartnerId(partner);
-    const labels = {
-      approve: 'approve',
-      reject: 'reject',
-      suspend: 'suspend',
-    };
-
-    if (!id) {
-      toast.error('Missing partner id.');
-      return;
-    }
-
-    if (!window.confirm(`Are you sure you want to ${labels[action]} ${getBusinessName(partner)}?`)) {
-      return;
-    }
-
+    if (!id) return toast.error('Missing partner id.');
+    if (!window.confirm(`${action} ${getBusinessName(partner)}?`)) return;
     setActionId(`${action}-${id}`);
-
     try {
-      if (action === 'approve') {
-        await adminApi.approvePartner(id);
-      } else if (action === 'reject') {
-        await adminApi.rejectPartner(id);
-      } else {
-        await adminApi.suspendPartner(id);
-      }
-
-      toast.success(`Partner ${labels[action]}d.`);
+      if (action === 'approve') await adminApi.approvePartner(id);
+      else if (action === 'reject') await adminApi.rejectPartner(id, 'Rejected by admin');
+      else if (action === 'suspend') await adminApi.suspendPartner(id);
+      else if (action === 'pause') await adminApi.pausePartner(id);
+      else if (action === 'delete') await adminApi.deletePartner(id);
+      toast.success(`Partner ${action}d.`);
       fetchPartners();
     } catch (error) {
       toast.error(error.message);
@@ -123,7 +89,6 @@ const Partners = () => {
   const columns = [
     {
       header: 'Business',
-      accessor: 'businessName',
       render: (row) => (
         <div>
           <div className="font-semibold text-slate-900">{getBusinessName(row)}</div>
@@ -133,7 +98,6 @@ const Partners = () => {
     },
     {
       header: 'Owner',
-      accessor: 'ownerName',
       render: (row) => (
         <div>
           <div className="font-semibold text-slate-700">{getOwnerName(row)}</div>
@@ -141,38 +105,46 @@ const Partners = () => {
         </div>
       ),
     },
-    { header: 'Phone', accessor: 'phone', render: (row) => getPhone(row) },
-    { header: 'Status', accessor: 'status', render: (row) => <PartnerStatusBadge status={getStatus(row)} /> },
+    { header: 'Phone', render: (row) => getPhone(row) },
+    { header: 'Status', render: (row) => <PartnerStatusBadge status={getStatus(row)} /> },
     {
       header: 'Actions',
-      accessor: 'actions',
       render: (row) => {
         const id = getPartnerId(row);
-        const currentStatus = getStatus(row);
-
+        const s = getStatus(row);
         return (
-          <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
-            <Button variant="secondary" className="rounded-xl px-3 py-2" onClick={() => navigate(`/admin/partners/${id}`)}>
-              <Eye size={14} />
-              View
-            </Button>
-            {currentStatus === 'PENDING' ? (
+          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => navigate(`/admin/partners/${id}`)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-primary hover:text-primary">
+              <Eye size={13} /> View
+            </button>
+            <button onClick={() => navigate(`/admin/partners/${id}?edit=1`)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-indigo-400 hover:text-indigo-600">
+              <Pencil size={13} /> Edit
+            </button>
+            {s === 'PENDING' && (
               <>
-                <Button className="rounded-xl px-3 py-2" disabled={actionId === `approve-${id}`} onClick={() => runAction(row, 'approve')}>
-                  <UserCheck size={14} />
-                  Approve
-                </Button>
-                <Button variant="danger" className="rounded-xl px-3 py-2" disabled={actionId === `reject-${id}`} onClick={() => runAction(row, 'reject')}>
-                  <UserX size={14} />
-                  Reject
-                </Button>
+                <button disabled={actionId === `approve-${id}`} onClick={() => runAction(row, 'approve')} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <UserCheck size={13} /> Approve
+                </button>
+                <button disabled={actionId === `reject-${id}`} onClick={() => runAction(row, 'reject')} className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50">
+                  <UserX size={13} /> Reject
+                </button>
               </>
-            ) : null}
-            {currentStatus === 'VERIFIED' ? (
-              <Button variant="secondary" className="rounded-xl px-3 py-2" disabled={actionId === `suspend-${id}`} onClick={() => runAction(row, 'suspend')}>
-                Suspend
-              </Button>
-            ) : null}
+            )}
+            {s === 'VERIFIED' && (
+              <>
+                <button disabled={actionId === `suspend-${id}`} onClick={() => runAction(row, 'suspend')} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                  Suspend
+                </button>
+                <button disabled={actionId === `pause-${id}`} onClick={() => runAction(row, 'pause')} className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100">
+                  <PauseCircle size={13} /> Pause
+                </button>
+              </>
+            )}
+            {(s === 'SUSPENDED' || s === 'PAUSED') && (
+              <button disabled={actionId === `delete-${id}`} onClick={() => runAction(row, 'delete')} className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50">
+                <Trash2 size={13} /> Delete
+              </button>
+            )}
           </div>
         );
       },
@@ -184,92 +156,49 @@ const Partners = () => {
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            <ShieldCheck size={14} />
-            Partner Approval
+            <ShieldCheck size={14} /> Partner Management
           </div>
-          <h1 className="mt-4 text-[2rem] font-bold tracking-tight text-slate-900">Business Applications</h1>
-          <p className="mt-2 text-sm text-slate-500">Review, approve, reject, or suspend partner businesses.</p>
+          <h1 className="mt-4 text-[2rem] font-bold tracking-tight text-slate-900">Business Partners</h1>
+          <p className="mt-2 text-sm text-slate-500">Review, approve, suspend, pause or delete partner businesses.</p>
         </div>
         <Button variant="secondary" className="h-12 rounded-2xl px-5" onClick={fetchPartners} disabled={loading}>
-          <RefreshCw size={18} />
-          {loading ? 'Refreshing...' : 'Refresh'}
+          <RefreshCw size={18} /> {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="card p-5 border-slate-200">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current Result</div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">{filteredPartners.length}</div>
-        </div>
-        <div className="card p-5 border-slate-200">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total From API</div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">{total}</div>
-        </div>
-        <div className="card p-5 border-slate-200">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Status Filter</div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">{status}</div>
-        </div>
-      </div>
-
+      {/* Filters */}
       <div className="card p-5 border-slate-200">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_180px_220px_auto]">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px_220px]">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search business, owner, email, phone..."
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary focus:bg-white"
-            />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search business, owner, phone…"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary focus:bg-white" />
           </div>
-          <select
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value);
-              setPage(1);
-            }}
-            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-primary focus:bg-white"
-          >
-            {partnerStatuses.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-primary">
+            <option value="">All statuses</option>
+            {ALL_STATUSES.filter(Boolean).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select
-            value={categoryId}
-            onChange={(event) => {
-              setCategoryId(event.target.value);
-              setPage(1);
-            }}
-            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-primary focus:bg-white"
-          >
+          <select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-primary">
             <option value="">All categories</option>
-            {businessCategoryGroups.map((category) => (
-              <option key={category.id} value={category.id}>{category.label}</option>
-            ))}
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <Button variant="secondary" className="rounded-2xl px-4 py-3">
-            <Filter size={16} />
-            Filters
-          </Button>
         </div>
       </div>
 
-      <div className="card overflow-hidden border-slate-200 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-        {loading ? (
-          <div className="p-8 text-center text-sm font-semibold text-slate-500">Loading partners...</div>
-        ) : (
-          <Table columns={columns} data={filteredPartners} onRowClick={(row) => navigate(`/admin/partners/${getPartnerId(row)}`)} />
-        )}
+      <div className="card overflow-hidden border-slate-200">
+        {loading
+          ? <div className="p-8 text-center text-sm font-semibold text-slate-500">Loading partners…</div>
+          : filtered.length === 0
+            ? <div className="p-8 text-center text-sm text-slate-400">No partners found.</div>
+            : <Table columns={columns} data={filtered} onRowClick={(row) => navigate(`/admin/partners/${getPartnerId(row)}`)} />}
       </div>
 
       <div className="flex items-center justify-between">
-        <Button variant="secondary" disabled={page === 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-          Previous
-        </Button>
-        <div className="text-sm font-semibold text-slate-500">Page {page}</div>
-        <Button variant="secondary" disabled={filteredPartners.length < 10 || loading} onClick={() => setPage((current) => current + 1)}>
-          Next
-        </Button>
+        <Button variant="secondary" disabled={page === 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+        <span className="text-sm font-semibold text-slate-500">Page {page} · {total} total</span>
+        <Button variant="secondary" disabled={filtered.length < 15 || loading} onClick={() => setPage((p) => p + 1)}>Next</Button>
       </div>
     </div>
   );

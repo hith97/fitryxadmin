@@ -52,4 +52,6 @@ export const partnerApi = {
     return request('/partner/onboarding', { method: 'POST', token, formData });
   },
   getStatus: (token) => request('/partner/status', { token }),
+  getPackages: (token) => request('/partner/packages', { token }),
+  getMySubscription: (token) => request('/partner/subscription', { token }),
 };

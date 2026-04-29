@@ -9,12 +9,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3003',
+        target: 'https://fitryx-1.onrender.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/uploads': {
-        target: 'http://localhost:3003',
+        target: 'https://fitryx-1.onrender.com',
         changeOrigin: true,
       },
     },
