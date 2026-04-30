@@ -8,7 +8,25 @@ const AuthContext = createContext(null);
 const normalizeApiUser = (payload) => {
   const user = payload.user || {};
   const partner = payload.partner || null;
-  const displayName = user.name || user.fullName || user.email?.split('@')[0] || 'User';
+  const displayName = user.name || user.fullName || user.email?.split('@')[0] || user.phone || 'User';
+
+  // Partner owner: branches come from partner.branches in login response
+  const branches = partner?.branches ?? payload.branches ?? [];
+
+  if (user.role === 'BRANCH_MANAGER') {
+    return {
+      id: user.id,
+      fullName: displayName,
+      email: user.email || '',
+      phone: user.phone || '',
+      role: 'BRANCH_MANAGER',
+      approvalStatus: 'approved',
+      branches,
+      business: branches[0]
+        ? { id: branches[0].id, name: branches[0].name, status: 'VERIFIED' }
+        : null,
+    };
+  }
 
   return {
     id: user.id,
@@ -17,6 +35,7 @@ const normalizeApiUser = (payload) => {
     phone: user.phone || '',
     role: user.role || 'USER',
     approvalStatus: partner?.status === 'VERIFIED' ? 'approved' : 'pending',
+    branches,
     business: partner
       ? {
           id: partner.id,
@@ -25,6 +44,8 @@ const normalizeApiUser = (payload) => {
           status: partner.status,
         }
       : null,
+    partner: partner || null,
+    rawUser: user,
   };
 };
 
@@ -64,6 +85,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
     localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    localStorage.removeItem('fitryx-selected-branch-id');
     setCurrentUser(null);
   };
 
@@ -72,7 +94,9 @@ export const AuthProvider = ({ children }) => {
     const nextUser = {
       ...currentUser,
       ...updates,
-      business: { ...currentUser.business, ...(updates.business || {}) },
+      business: updates.business
+        ? { ...currentUser.business, ...updates.business }
+        : currentUser.business,
     };
     localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(nextUser));
     setCurrentUser(nextUser);

@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import AppShell from './components/layout/AppShell';
 import { AUTH_TOKEN_STORAGE_KEY } from './config/auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { BranchProvider } from './context/BranchContext';
 import { BusinessDataProvider } from './context/BusinessDataContext';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Auth/Login';
@@ -35,10 +36,11 @@ import AdminMembers from './pages/Admin/AdminMembers';
 import AdminBookings from './pages/Admin/AdminBookings';
 import AdminLeads from './pages/Admin/AdminLeads';
 import AdminPackages from './pages/Admin/AdminPackages';
+import BranchesList from './pages/Branches/BranchesList';
+import BranchDetail from './pages/Branches/BranchDetail';
 
 const queryClient = new QueryClient();
 
-// Placeholder components for routes not fully implemented
 const Placeholder = ({ title }) => (
   <div className="card p-12 flex flex-col items-center justify-center text-center">
     <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
@@ -77,6 +79,12 @@ const ProtectedRoute = () => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  // BRANCH_MANAGER: always allow through (they're pre-verified users)
+  if (currentUser?.role === 'BRANCH_MANAGER') {
+    return <Outlet />;
+  }
+
+  // PARTNER: must complete onboarding + be verified
   if (currentUser?.role === 'PARTNER' && currentUser?.business?.status !== 'VERIFIED') {
     return (
       <Navigate
@@ -125,6 +133,8 @@ const AppRoutes = () => {
           <Route path="admin/bookings" element={<AdminBookings />} />
           <Route path="admin/leads" element={<AdminLeads />} />
           <Route path="admin/packages" element={<AdminPackages />} />
+          <Route path="branches" element={<BranchesList />} />
+          <Route path="branches/:id" element={<BranchDetail />} />
           <Route path="members" element={<MembersList />} />
           <Route path="members/:id" element={<MemberDetail />} />
           <Route path="members/:id/subscriptions" element={<MemberDetail />} />
@@ -166,10 +176,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <BusinessDataProvider>
-            <Toaster position="top-right" />
-            <AppRoutes />
-          </BusinessDataProvider>
+          <BranchProvider>
+            <BusinessDataProvider>
+              <Toaster position="top-right" />
+              <AppRoutes />
+            </BusinessDataProvider>
+          </BranchProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

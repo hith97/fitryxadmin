@@ -4,9 +4,10 @@ import {
   LayoutDashboard, Users, ShieldCheck, Package, Target,
   CalendarCheck, Settings, X, Download, BookOpen,
   UserCheck, Dumbbell, ClipboardList, Tag, RefreshCw,
-  CreditCard, Receipt, BookMarked, BarChart2, Bell,
+  CreditCard, Receipt, BookMarked, BarChart2, Bell, Building2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useBranch } from '../../context/BranchContext';
 
 const NavSection = ({ title, items, mobile, onClose }) => (
   <div className="mb-6">
@@ -65,6 +66,7 @@ const PARTNER_SECTIONS = [
     title: 'MANAGING',
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Branches', path: '/branches', icon: Building2 },
       { label: 'Classes', path: '/classes', icon: BookOpen },
       { label: 'Members', path: '/members', icon: Users },
       { label: 'Staff & Trainers', path: '/staff', icon: UserCheck },
@@ -94,12 +96,54 @@ const PARTNER_SECTIONS = [
   },
 ];
 
+// Branch managers see a restricted set of nav items (no branch management itself)
+const BRANCH_MANAGER_SECTIONS = [
+  {
+    title: 'MANAGING',
+    items: [
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Classes', path: '/classes', icon: BookOpen },
+      { label: 'Members', path: '/members', icon: Users },
+      { label: 'Staff & Trainers', path: '/staff', icon: UserCheck },
+      { label: 'Leads', path: '/leads', icon: Target },
+      { label: 'Plans', path: '/plans', icon: ClipboardList },
+      { label: 'Subscriptions', path: '/subscriptions', icon: RefreshCw },
+    ],
+  },
+  {
+    title: 'OPERATIONS',
+    items: [
+      { label: 'Attendance', path: '/attendance', icon: CalendarCheck },
+      { label: 'Reports', path: '/reports', icon: BarChart2 },
+    ],
+  },
+];
+
 const Sidebar = ({ mobile = false, onClose }) => {
   const { currentUser } = useAuth();
+  const { selectedBranch, isMultiBranch } = useBranch();
+
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
-  const businessName = isSuperAdmin ? 'Fitryx Platform' : (currentUser?.business?.name || 'Fitryx');
-  const businessCategory = isSuperAdmin ? 'Super Admin' : (currentUser?.business?.category || 'Gym');
-  const sections = isSuperAdmin ? ADMIN_SECTIONS : PARTNER_SECTIONS;
+  const isBranchManager = currentUser?.role === 'BRANCH_MANAGER';
+  const isPartner = currentUser?.role === 'PARTNER';
+
+  let sections;
+  let displayName;
+  let displayCategory;
+
+  if (isSuperAdmin) {
+    sections = ADMIN_SECTIONS;
+    displayName = 'Fitryx Platform';
+    displayCategory = 'Super Admin';
+  } else if (isBranchManager) {
+    sections = BRANCH_MANAGER_SECTIONS;
+    displayName = selectedBranch?.name || 'Branch';
+    displayCategory = 'Branch Manager';
+  } else {
+    sections = PARTNER_SECTIONS;
+    displayName = selectedBranch?.name || currentUser?.business?.name || 'Fitryx';
+    displayCategory = isMultiBranch ? `${selectedBranch?.city || 'Branch'}` : (currentUser?.business?.category || 'Gym');
+  }
 
   return (
     <aside className={`${mobile ? 'block h-full' : 'fixed hidden h-full lg:block'} left-0 top-0 w-[220px] bg-white border-r border-border overflow-y-auto z-40`}>
@@ -107,11 +151,11 @@ const Sidebar = ({ mobile = false, onClose }) => {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[10px] text-gray-400 font-medium uppercase mb-0.5 ml-1">
-              {isSuperAdmin ? 'Platform' : `Managing ${businessName}`}
+              {isSuperAdmin ? 'Platform' : isBranchManager ? 'Branch Access' : `Managing ${isMultiBranch ? 'Multi-Branch' : displayName}`}
             </div>
             <h1 className="text-xl font-bold text-gray-900 ml-1">fitryx admin</h1>
             <div className="mt-2 ml-1 inline-flex rounded-full bg-primary-light px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-              {businessCategory}
+              {displayCategory}
             </div>
           </div>
           {mobile ? (
