@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyRound, Mail, Phone, ShieldCheck, User2 } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Mail, Phone, ShieldCheck, User2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 
@@ -16,6 +16,11 @@ const Field = ({ label, value, icon: Icon }) => (
 const AccountSettings = () => {
   const { currentUser } = useAuth();
   const [section, setSection] = useState(null);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+
+  const togglePasswordVisibility = (label) => {
+    setVisiblePasswords((current) => ({ ...current, [label]: !current[label] }));
+  };
 
   return (
     <div className="space-y-6">
@@ -55,10 +60,20 @@ const AccountSettings = () => {
             {['Current Password', 'New Password', 'Confirm Password'].map((label) => (
               <div key={label}>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
-                <input
-                  type="password"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-primary focus:bg-white"
-                />
+                <div className="relative">
+                  <input
+                    type={visiblePasswords[label] ? 'text' : 'password'}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm outline-none focus:border-primary focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility(label)}
+                    className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    aria-label={visiblePasswords[label] ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+                  >
+                    {visiblePasswords[label] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             ))}
             <div className="flex justify-end gap-3 pt-2">

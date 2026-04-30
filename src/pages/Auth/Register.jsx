@@ -15,6 +15,8 @@ import {
   Sparkles,
   Trophy,
   Waves,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -51,20 +53,40 @@ const createInitialForm = () => ({
   phoneOtp: '',
 });
 
-const InputField = ({ label, error, className = '', ...props }) => (
+const InputField = ({ label, error, className = '', trailing, inputClassName = '', ...props }) => (
   <div className={className}>
     <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
-    <input
-      {...props}
-      className={`w-full rounded-2xl border px-4 py-3.5 text-sm text-slate-700 outline-none transition-all focus:bg-white focus:ring-4 ${
-        error
-          ? 'border-rose-300 bg-rose-50 focus:border-rose-400 focus:ring-rose-100'
-          : 'border-slate-200 bg-slate-50 focus:border-primary focus:ring-primary/10'
-      }`}
-    />
+    <div className="relative">
+      <input
+        {...props}
+        className={`w-full rounded-2xl border px-4 py-3.5 text-sm text-slate-700 outline-none transition-all focus:bg-white focus:ring-4 ${
+          trailing ? 'pr-12' : ''
+        } ${
+          error
+            ? 'border-rose-300 bg-rose-50 focus:border-rose-400 focus:ring-rose-100'
+            : 'border-slate-200 bg-slate-50 focus:border-primary focus:ring-primary/10'
+        } ${inputClassName}`}
+      />
+      {trailing ? <div className="absolute inset-y-0 right-3 flex items-center">{trailing}</div> : null}
+    </div>
     {error ? <div className="mt-2 text-sm text-rose-600">{error}</div> : null}
   </div>
 );
+
+const PasswordToggle = ({ visible, onClick, label }) => {
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/30"
+      aria-label={label}
+    >
+      <Icon size={18} />
+    </button>
+  );
+};
 
 const TextAreaField = ({ label, error, rows = 4, ...props }) => (
   <div>
@@ -150,6 +172,8 @@ const Register = () => {
   );
   const [resendingChannel, setResendingChannel] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -528,19 +552,33 @@ const Register = () => {
                 />
                 <InputField
                   label="Password"
-                  type="password"
+                  type={passwordVisible ? 'text' : 'password'}
                   value={form.password}
                   onChange={(event) => setField('password', event.target.value)}
                   placeholder="Create a strong password"
                   error={errors.password}
+                  trailing={
+                    <PasswordToggle
+                      visible={passwordVisible}
+                      onClick={() => setPasswordVisible((current) => !current)}
+                      label={passwordVisible ? 'Hide password' : 'Show password'}
+                    />
+                  }
                 />
                 <InputField
                   label="Confirm Password"
-                  type="password"
+                  type={confirmPasswordVisible ? 'text' : 'password'}
                   value={form.confirmPassword}
                   onChange={(event) => setField('confirmPassword', event.target.value)}
                   placeholder="Confirm your password"
                   error={errors.confirmPassword}
+                  trailing={
+                    <PasswordToggle
+                      visible={confirmPasswordVisible}
+                      onClick={() => setConfirmPasswordVisible((current) => !current)}
+                      label={confirmPasswordVisible ? 'Hide confirm password' : 'Show confirm password'}
+                    />
+                  }
                 />
               </div>
 

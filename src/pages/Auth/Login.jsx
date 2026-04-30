@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, KeyRound, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, KeyRound, Mail, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
@@ -39,6 +39,7 @@ const Login = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -124,12 +125,20 @@ const Login = () => {
             <div className="relative">
               <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
-                type="password"
+                type={passwordVisible ? 'text' : 'password'}
                 value={form.password}
                 onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-sm text-slate-700 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-12 text-sm text-slate-700 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
                 placeholder="Enter your password"
               />
+              <button
+                type="button"
+                onClick={() => setPasswordVisible((current) => !current)}
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+              >
+                {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
