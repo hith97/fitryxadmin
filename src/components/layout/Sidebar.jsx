@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, ShieldCheck, Package, Target,
   CalendarCheck, Settings, X, Download, BookOpen,
   UserCheck, Dumbbell, ClipboardList, Tag, RefreshCw,
-  CreditCard, Receipt, BookMarked, BarChart2, Bell, Building2,
+  TrendingUp, Receipt, ShoppingCart, BookMarked, BarChart2, Bell, Building2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBranch } from '../../context/BranchContext';
@@ -78,10 +78,11 @@ const PARTNER_SECTIONS = [
     ],
   },
   {
-    title: 'BILLING',
+    title: 'FINANCIALS',
     items: [
-      { label: 'Billing', path: '/billing', icon: CreditCard },
+      { label: 'Income', path: '/income', icon: TrendingUp },
       { label: 'Expenses', path: '/expenses', icon: Receipt },
+      { label: 'Products', path: '/products', icon: ShoppingCart },
     ],
   },
   {

@@ -41,6 +41,9 @@ import AdminPackages from './pages/Admin/AdminPackages';
 import BranchesList from './pages/Branches/BranchesList';
 import BranchDetail from './pages/Branches/BranchDetail';
 import PTCollections from './pages/PTCollections';
+import Expenses from './pages/Expenses';
+import Products from './pages/Products';
+import Income from './pages/Income';
 
 const queryClient = new QueryClient();
 
@@ -148,8 +151,10 @@ const AppRoutes = () => {
           <Route path="pt-collections" element={<PTCollections />} />
           <Route path="offers" element={<Placeholder title="Offers" />} />
           <Route path="subscriptions" element={<Subscriptions />} />
-          <Route path="billing" element={<Placeholder title="Billing" />} />
-          <Route path="expenses" element={<Placeholder title="Expenses" />} />
+          <Route path="billing" element={<Navigate to="/income" replace />} />
+          <Route path="income" element={<Income />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="products" element={<Products />} />
           <Route path="attendance" element={<Placeholder title="Attendance" />} />
           <Route path="classes" element={<Classes />} />
           <Route path="libraries" element={<Placeholder title="Libraries" />} />

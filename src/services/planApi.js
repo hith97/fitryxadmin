@@ -134,6 +134,45 @@ export const memberApi = {
   remove: (id) => request(`/partner/members/${id}`, { method: 'DELETE' }),
 };
 
+// ── Expenses ─────────────────────────────────────────────────────
+export const expenseApi = {
+  list: (query = {}) => request('/partner/expenses', { query }),
+
+  create: (data) => request('/partner/expenses', { method: 'POST', body: data }),
+
+  update: (id, data) => request(`/partner/expenses/${id}`, { method: 'PATCH', body: data }),
+
+  remove: (id) => request(`/partner/expenses/${id}`, { method: 'DELETE' }),
+
+  monthlyReport: (year, month) => request('/partner/expenses/report/monthly', { query: { year, month } }),
+};
+
+// ── Products ──────────────────────────────────────────────────────
+export const productApi = {
+  list: () => request('/partner/products'),
+
+  create: (data) => request('/partner/products', { method: 'POST', body: data }),
+
+  update: (id, data) => request(`/partner/products/${id}`, { method: 'PATCH', body: data }),
+
+  remove: (id) => request(`/partner/products/${id}`, { method: 'DELETE' }),
+
+  adjustStock: (id, delta, variantId) => request(`/partner/products/${id}/stock`, { method: 'PATCH', body: { delta, variantId } }),
+
+  toggleStore: (id) => request(`/partner/products/${id}/toggle-store`, { method: 'PATCH' }),
+
+  listOrders: (query = {}) => request('/partner/products/orders', { query }),
+
+  createOrder: (data) => request('/partner/products/orders', { method: 'POST', body: data }),
+
+  getOrder: (id) => request(`/partner/products/orders/${id}`),
+};
+
+// ── Income ────────────────────────────────────────────────────────
+export const incomeApi = {
+  summary: (query = {}) => request('/partner/income/summary', { query }),
+};
+
 // ── Staff ────────────────────────────────────────────────────────
 export const staffApi = {
   list: () => request('/partner/staff'),

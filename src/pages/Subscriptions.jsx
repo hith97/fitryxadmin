@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CheckCircle2,
   CreditCard,
+  FileText,
   MoreHorizontal,
   Pause,
   Phone,
@@ -18,6 +19,7 @@ import { toast } from 'react-hot-toast';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Avatar from '../components/ui/Avatar';
+import InvoiceModal from '../components/ui/InvoiceModal';
 import { subscriptionApi, memberApi, planApi } from '../services/planApi';
 
 // ── Constants ──────────────────────────────────────────────────
@@ -299,7 +301,7 @@ const RenewModal = ({ isOpen, onClose, subscription, onSaved }) => {
 };
 
 // ── Row action menu ────────────────────────────────────────────
-const RowMenu = ({ sub, onRenew, onCancel, onPause }) => {
+const RowMenu = ({ sub, onRenew, onCancel, onPause, onInvoice }) => {
   const [open, setOpen] = useState(false);
   const canAct = sub.status === 'ACTIVE' || sub.status === 'PAUSED';
 
@@ -310,8 +312,12 @@ const RowMenu = ({ sub, onRenew, onCancel, onPause }) => {
         <MoreHorizontal size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-30 w-44 rounded-2xl border border-slate-200 bg-white py-2 shadow-xl"
+        <div className="absolute right-0 top-9 z-30 w-48 rounded-2xl border border-slate-200 bg-white py-2 shadow-xl"
           onMouseLeave={() => setOpen(false)}>
+          <button onClick={() => { setOpen(false); onInvoice(sub); }}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+            <FileText size={13} /> View Invoice
+          </button>
           <button onClick={() => { setOpen(false); onRenew(sub); }}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
             <RefreshCw size={13} /> Renew
@@ -351,6 +357,7 @@ const Subscriptions = () => {
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [renewSub, setRenewSub] = useState(null);
+  const [invoiceSub, setInvoiceSub] = useState(null);
 
   const queryStatus = activeTab === 'ALL' ? undefined : activeTab;
 
@@ -400,6 +407,11 @@ const Subscriptions = () => {
         subscription={renewSub}
         onClose={() => setRenewSub(null)}
         onSaved={() => { queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); setRenewSub(null); }}
+      />
+      <InvoiceModal
+        isOpen={Boolean(invoiceSub)}
+        subscription={invoiceSub}
+        onClose={() => setInvoiceSub(null)}
       />
 
       {/* Header */}
@@ -545,6 +557,7 @@ const Subscriptions = () => {
                         onRenew={setRenewSub}
                         onCancel={handleCancel}
                         onPause={(s) => pauseMutation.mutate(s.id)}
+                        onInvoice={setInvoiceSub}
                       />
                     </td>
                   </tr>
