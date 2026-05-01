@@ -137,7 +137,10 @@ const PartnerDetail = () => {
 
   const runAction = async (nextAction) => {
     const partnerId = getPartnerId(partner) || id;
-    if (!window.confirm(`Are you sure you want to ${nextAction} ${getBusinessName(partner)}?`)) return;
+    const confirmMessage = nextAction === 'delete'
+      ? `PERMANENTLY DELETE "${getBusinessName(partner)}"?\n\nThis will erase ALL data — members, plans, bookings, leads, staff, and the owner account. This cannot be undone.`
+      : `Are you sure you want to ${nextAction} ${getBusinessName(partner)}?`;
+    if (!window.confirm(confirmMessage)) return;
     setAction(nextAction);
     try {
       if (nextAction === 'approve') await adminApi.approvePartner(partnerId);
@@ -146,7 +149,7 @@ const PartnerDetail = () => {
       else if (nextAction === 'pause') await adminApi.pausePartner(partnerId);
       else if (nextAction === 'delete') {
         await adminApi.deletePartner(partnerId);
-        toast.success('Partner deleted.');
+        toast.success('Partner and all associated data permanently deleted.');
         navigate('/admin/partners');
         return;
       }

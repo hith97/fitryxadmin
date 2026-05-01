@@ -69,7 +69,10 @@ const Partners = () => {
   const runAction = async (partner, action) => {
     const id = getPartnerId(partner);
     if (!id) return toast.error('Missing partner id.');
-    if (!window.confirm(`${action} ${getBusinessName(partner)}?`)) return;
+    const confirmMessage = action === 'delete'
+      ? `PERMANENTLY DELETE "${getBusinessName(partner)}"?\n\nThis will erase ALL data — members, plans, bookings, leads, and the owner account. This cannot be undone.`
+      : `${action} ${getBusinessName(partner)}?`;
+    if (!window.confirm(confirmMessage)) return;
     setActionId(`${action}-${id}`);
     try {
       if (action === 'approve') await adminApi.approvePartner(id);

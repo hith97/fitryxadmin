@@ -14,11 +14,11 @@ const getPartnerResumeStep = (statusPayload) => {
     return null;
   }
 
-  const phoneVerified = Boolean(statusPayload?.verification?.phoneVerified);
   const emailVerified = Boolean(statusPayload?.verification?.emailVerified);
   const hasCompletedOnboarding = Boolean(statusPayload?.hasCompletedOnboarding);
 
-  if (!phoneVerified || !emailVerified) {
+  // Email must be verified before proceeding (phone is optional)
+  if (!emailVerified) {
     return 2;
   }
 
@@ -142,7 +142,17 @@ const Login = () => {
             </div>
           </div>
 
-          {error ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div> : null}
+          {error ? (
+            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600">
+              {error}
+              {error.toLowerCase().includes('verify your email') ? (
+                <div className="mt-2 font-semibold">
+                  Check your inbox for the verification code and{' '}
+                  <Link className="underline" to="/register">complete verification here</Link>.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <Button type="submit" className="h-12 w-full rounded-2xl text-sm font-semibold" disabled={submitting}>
             {submitting ? 'Signing in...' : 'Login'}

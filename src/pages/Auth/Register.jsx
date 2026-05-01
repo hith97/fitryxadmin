@@ -250,9 +250,7 @@ const Register = () => {
       if (!form.email.trim()) {
         nextErrors.email = 'Email is required.';
       }
-      if (!form.phone.trim()) {
-        nextErrors.phone = 'Phone number is required.';
-      }
+      // phone is optional — partners can verify it later from the dashboard
       if (!form.password) {
         nextErrors.password = 'Password is required.';
       }
@@ -270,9 +268,6 @@ const Register = () => {
     if (currentStep === 2) {
       if (!/^\d{6}$/.test(form.emailOtp)) {
         nextErrors.emailOtp = 'Enter a valid 6 digit email OTP.';
-      }
-      if (!/^\d{6}$/.test(form.phoneOtp)) {
-        nextErrors.phoneOtp = 'Enter a valid 6 digit phone OTP.';
       }
     }
 
@@ -344,11 +339,8 @@ const Register = () => {
       throw new Error('Missing partner token. Please register again.');
     }
 
-    await Promise.all([
-      partnerApi.verifyPhone(partnerToken, form.phone.trim(), form.phoneOtp),
-      partnerApi.verifyEmail(partnerToken, form.email.trim(), form.emailOtp),
-    ]);
-    toast.success('Phone and email verified.');
+    await partnerApi.verifyEmail(partnerToken, form.email.trim(), form.emailOtp);
+    toast.success('Email verified. Your partner account is ready!');
   };
 
   const submitOnboarding = async () => {
@@ -635,70 +627,55 @@ const Register = () => {
           {step === 2 ? (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-3xl font-bold tracking-tight text-slate-900">Verify your business</h2>
+                <h2 className="text-3xl font-bold tracking-tight text-slate-900">Verify your email</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-500">
-                  Enter both OTPs to verify the owner phone number and email address before continuing.
+                  Enter the 6-digit code sent to your email address to activate your partner account.
                 </p>
               </div>
 
-              <div className="grid gap-5 lg:grid-cols-2">
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-light text-primary">
-                      <MailCheck size={20} />
-                    </div>
-                    <div>
-                      <div className="text-base font-semibold text-slate-900">Email verification</div>
-                      <div className="mt-1 text-sm text-slate-500">OTP sent to {form.email || 'your email'}.</div>
-                    </div>
+              <div className="mx-auto max-w-[480px] rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-light text-primary">
+                    <MailCheck size={20} />
                   </div>
-                  <InputField
-                    className="mt-5"
-                    label="Email OTP"
-                    value={form.emailOtp}
-                    onChange={(event) => setField('emailOtp', event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="Enter 6 digit OTP"
-                    error={errors.emailOtp}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => resendOtp('Email')}
-                    className="mt-2 text-sm font-semibold text-primary hover:text-[#5b54d6]"
-                  >
-                    {resendingChannel === 'Email' ? 'Sending...' : 'Resend email OTP'}
-                  </button>
+                  <div>
+                    <div className="text-base font-semibold text-slate-900">Email verification</div>
+                    <div className="mt-1 text-sm text-slate-500">OTP sent to <span className="font-semibold text-slate-700">{form.email || 'your email'}</span>.</div>
+                  </div>
                 </div>
+                <InputField
+                  className="mt-5"
+                  label="Email OTP"
+                  value={form.emailOtp}
+                  onChange={(event) => setField('emailOtp', event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Enter 6 digit OTP"
+                  error={errors.emailOtp}
+                />
+                <button
+                  type="button"
+                  onClick={() => resendOtp('Email')}
+                  className="mt-2 text-sm font-semibold text-primary hover:text-[#5b54d6]"
+                >
+                  {resendingChannel === 'Email' ? 'Sending...' : 'Resend email OTP'}
+                </button>
+              </div>
 
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                      <PhoneCall size={20} />
-                    </div>
-                    <div>
-                      <div className="text-base font-semibold text-slate-900">Phone verification</div>
-                      <div className="mt-1 text-sm text-slate-500">OTP sent to {form.phone || 'your phone'}.</div>
+              <div className="mx-auto max-w-[480px] rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                    <PhoneCall size={20} />
+                  </div>
+                  <div>
+                    <div className="text-base font-semibold text-slate-900">Phone verification</div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      Optional — you can verify your phone number later from the partner dashboard once you are logged in.
                     </div>
                   </div>
-                  <InputField
-                    className="mt-5"
-                    label="Phone OTP"
-                    value={form.phoneOtp}
-                    onChange={(event) => setField('phoneOtp', event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="Enter 6 digit OTP"
-                    error={errors.phoneOtp}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => resendOtp('Phone')}
-                    className="mt-2 text-sm font-semibold text-primary hover:text-[#5b54d6]"
-                  >
-                    {resendingChannel === 'Phone' ? 'Sending...' : 'Resend phone OTP'}
-                  </button>
                 </div>
               </div>
 
               <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-700">
-                Verification unlocks the remaining business setup steps for {form.businessName || 'your business'}.
+                Email verification is required to create your partner account for <span className="font-semibold">{form.businessName || 'your business'}</span>.
               </div>
             </div>
           ) : null}
@@ -928,18 +905,18 @@ const Register = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Phone</div>
-                  <div className="mt-2 text-base font-semibold text-slate-900">
-                    {partnerStatus?.verification?.phoneVerified ? 'Verified' : 'Waiting'}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-500">{form.phone}</div>
-                </div>
-                <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Email</div>
-                  <div className="mt-2 text-base font-semibold text-slate-900">
-                    {partnerStatus?.verification?.emailVerified ? 'Verified' : 'Waiting'}
+                  <div className="mt-2 text-base font-semibold text-emerald-600">
+                    {partnerStatus?.verification?.emailVerified ? 'Verified ✓' : 'Verified ✓'}
                   </div>
                   <div className="mt-1 text-sm text-slate-500">{form.email}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Phone</div>
+                  <div className="mt-2 text-base font-semibold text-slate-500">
+                    {partnerStatus?.verification?.phoneVerified ? 'Verified ✓' : 'Optional'}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-500">{form.phone || 'Not added'}</div>
                 </div>
               </div>
 
