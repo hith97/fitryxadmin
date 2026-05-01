@@ -1,6 +1,8 @@
 import { AUTH_TOKEN_STORAGE_KEY } from '../config/auth';
 import { API_BASE_URL } from '../config/api';
 
+const SELECTED_BRANCH_KEY = 'fitryx-selected-branch-id';
+
 const parseResponse = async (res) => {
   const ct = res.headers.get('content-type') || '';
   const data = ct.includes('application/json') ? await res.json() : await res.text();
@@ -11,8 +13,9 @@ const parseResponse = async (res) => {
   return data;
 };
 
-const request = async (endpoint, { method = 'GET', body, query } = {}) => {
+const request = async (endpoint, { method = 'GET', body, query, branchId: overrideBranchId } = {}) => {
   const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  const branchId = overrideBranchId ?? localStorage.getItem(SELECTED_BRANCH_KEY);
   const url = new URL(`${API_BASE_URL}${endpoint}`, window.location.origin);
   Object.entries(query || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
@@ -23,6 +26,7 @@ const request = async (endpoint, { method = 'GET', body, query } = {}) => {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(branchId ? { 'x-branch-id': branchId } : {}),
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
@@ -62,6 +66,8 @@ export const membershipCategoryApi = {
 export const planApi = {
   list: () => request('/partner/plans'),
 
+  listPT: () => request('/partner/plans', { query: { isPT: 'true' } }),
+
   create: (data) => request('/partner/plans', { method: 'POST', body: data }),
 
   update: (id, data) => request(`/partner/plans/${id}`, { method: 'PATCH', body: data }),
@@ -97,6 +103,11 @@ export const subscriptionApi = {
   cancel: (id) => request(`/partner/subscriptions/${id}/cancel`, { method: 'PATCH' }),
 
   pause: (id) => request(`/partner/subscriptions/${id}/pause`, { method: 'PATCH' }),
+
+  listPT: () => request('/partner/subscriptions/pt'),
+
+  updateTrainer: (id, trainerId) =>
+    request(`/partner/subscriptions/${id}/trainer`, { method: 'PATCH', body: { trainerId } }),
 };
 
 // ── Leads ────────────────────────────────────────────────────────
@@ -116,7 +127,7 @@ export const memberApi = {
 
   get: (id) => request(`/partner/members/${id}`),
 
-  create: (data) => request('/partner/members', { method: 'POST', body: data }),
+  create: (data, branchId) => request('/partner/members', { method: 'POST', body: data, branchId }),
 
   update: (id, data) => request(`/partner/members/${id}`, { method: 'PATCH', body: data }),
 

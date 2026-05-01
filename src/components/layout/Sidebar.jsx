@@ -153,7 +153,7 @@ const Sidebar = ({ mobile = false, onClose }) => {
             <div className="text-[10px] text-gray-400 font-medium uppercase mb-0.5 ml-1">
               {isSuperAdmin ? 'Platform' : isBranchManager ? 'Branch Access' : `Managing ${isMultiBranch ? 'Multi-Branch' : displayName}`}
             </div>
-            <h1 className="text-xl font-bold text-gray-900 ml-1">fitryx admin</h1>
+            <img src="/logo.png" alt="Fitryx Admin" className="ml-1 h-8 w-auto" />
             <div className="mt-2 ml-1 inline-flex rounded-full bg-primary-light px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               {displayCategory}
             </div>

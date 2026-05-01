@@ -293,9 +293,12 @@ const Dashboard = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(108,99,255,0.18),_transparent_35%),radial-gradient(circle_at_bottom_left,_rgba(34,197,94,0.12),_transparent_30%)]" />
         <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <div className="max-w-[620px]">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              <Activity size={14} />
-              Live Operations
+            <div className="mb-3 flex items-center gap-3">
+              <img src="/logo.png" alt="Fitryx" className="h-9 w-auto" />
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary-light px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                <Activity size={14} />
+                Live Operations
+              </div>
             </div>
             <h1 className="text-[2rem] font-bold tracking-tight text-slate-900 sm:text-[2.5rem]">
               Welcome back, {ownerFirstName}

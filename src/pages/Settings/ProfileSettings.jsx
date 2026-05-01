@@ -1,13 +1,14 @@
 import React, { useRef, useState } from 'react';
 import {
   Building2, Camera, CheckSquare, Clock3, Image,
-  MapPin, Pencil, Plus, Save, Square, Tag, Trash2, Upload, X,
+  MapPin, Pencil, Plus, QrCode, Save, Square, Tag, Trash2, Upload, X,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { businessApi, uploadApi } from '../../services/planApi';
 import { getAmenityConfig } from '../../config/amenities';
 import Button from '../../components/ui/Button';
+import QRCodeCard from '../../components/ui/QRCodeCard';
 
 // ── Helpers ────────────────────────────────────────────────────
 const inputCls = 'w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-primary focus:bg-white transition-all';
@@ -511,6 +512,24 @@ const ProfileSettings = () => {
           </div>
         )}
       </SectionCard>
+
+      {/* ── QR CODES ── */}
+      {profile?.qrToken && (
+        <SectionCard title="QR Codes" icon={QrCode}>
+          <div className="flex flex-wrap gap-8 justify-center sm:justify-start">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Main Business QR</p>
+              <QRCodeCard value={profile.qrToken} label={profile.name} size={160} />
+            </div>
+            {profile?.branches?.filter((b) => b.qrToken && !b.isMainBranch).map((b) => (
+              <div key={b.id} className="flex flex-col items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{b.name}</p>
+                <QRCodeCard value={b.qrToken} label={b.name} size={160} />
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── AMENITIES ── */}
       <SectionCard

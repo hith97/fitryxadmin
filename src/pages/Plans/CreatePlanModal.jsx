@@ -32,6 +32,7 @@ const createInitialState = (plan) => ({
   maxMembers: plan?.maxMembers ?? '',
   price: plan?.price ?? '',
   discountPrice: plan?.discountPrice ?? '',
+  sessions: plan?.sessions ?? '',
   classIds: plan?.planClasses?.map((pc) => pc.class.id) ?? [],
   description: plan?.description ?? '',
 });
@@ -47,6 +48,9 @@ const CreatePlanModal = ({ isOpen, onClose, plan = null, onSaved }) => {
     queryFn: membershipCategoryApi.list,
     enabled: isOpen,
   });
+
+  const selectedCategory = categories.find((c) => String(c.id) === String(form.membershipCategoryId));
+  const isPTCategory = selectedCategory?.name?.toLowerCase().includes('personal training');
 
   const { data: classes = [] } = useQuery({
     queryKey: ['classes'],
@@ -113,6 +117,8 @@ const CreatePlanModal = ({ isOpen, onClose, plan = null, onSaved }) => {
       maxMembers: form.maxMembersEnabled ? Number(form.maxMembers) : null,
       classIds: form.classIds,
       description: form.description.trim() || undefined,
+      isPT: isPTCategory ? true : undefined,
+      sessions: isPTCategory && form.sessions ? Number(form.sessions) : null,
     });
   };
 
@@ -159,7 +165,7 @@ const CreatePlanModal = ({ isOpen, onClose, plan = null, onSaved }) => {
         </div>
 
         {/* Duration + Price + Discount */}
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className={`grid gap-5 ${isPTCategory ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           <FormField label="Duration (Days)" required error={errors.duration}>
             <input
               type="number"
@@ -192,6 +198,19 @@ const CreatePlanModal = ({ isOpen, onClose, plan = null, onSaved }) => {
               className={inputClass(false)}
             />
           </FormField>
+
+          {isPTCategory && (
+            <FormField label="Total Sessions">
+              <input
+                type="number"
+                min={1}
+                value={form.sessions}
+                onChange={(e) => set('sessions', e.target.value)}
+                placeholder="e.g. 24"
+                className={inputClass(false)}
+              />
+            </FormField>
+          )}
         </div>
 
         {/* Membership Limit */}

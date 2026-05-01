@@ -26,7 +26,7 @@ const BranchSelector = () => {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-50 rounded-md cursor-pointer transition-colors border border-transparent hover:border-border group"
       >
-        <Building2 size={14} className="text-gray-400" />
+        <img src="/favicon.png" alt="" className="h-4 w-4 rounded-sm object-contain" />
         <span className="text-[13px] font-medium text-gray-700 max-w-[120px] truncate">
           {selectedBranch.name}
         </span>
@@ -114,6 +114,7 @@ const Topbar = ({ onMenuClick }) => {
           <BranchSelector />
         ) : (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md">
+            <img src="/favicon.png" alt="" className="h-4 w-4 rounded-sm object-contain" />
             <span className="text-[13px] font-medium text-gray-700">Fitryx Platform</span>
           </div>
         )}

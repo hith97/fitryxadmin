@@ -62,21 +62,28 @@ const readStoredCurrentUser = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => readStoredCurrentUser());
 
+  const _applyLoginPayload = (payload) => {
+    const token = payload.access_token || payload.accessToken || payload.token;
+    if (!token) throw new Error('Login succeeded but no access token was returned.');
+    const nextUser = normalizeApiUser(payload);
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(nextUser));
+    setCurrentUser(nextUser);
+    return { ok: true, token, user: nextUser, partner: payload.partner || null, payload, isFirstLogin: payload.isFirstLogin ?? false };
+  };
+
   const login = async ({ email, password }) => {
     try {
       const payload = await authApi.login({ email: email.trim(), password });
-      const token = payload.access_token || payload.accessToken || payload.token;
+      return _applyLoginPayload(payload);
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  };
 
-      if (!token) {
-        throw new Error('Login succeeded but no access token was returned.');
-      }
-
-      const nextUser = normalizeApiUser(payload);
-      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-      localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(nextUser));
-      setCurrentUser(nextUser);
-
-      return { ok: true, token, user: nextUser, partner: payload.partner || null, payload };
+  const loginWithOtp = (payload) => {
+    try {
+      return _applyLoginPayload(payload);
     } catch (error) {
       return { ok: false, error: error.message };
     }
@@ -109,6 +116,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: Boolean(currentUser),
         ready: true,
         login,
+        loginWithOtp,
         logout,
         updateCurrentUser,
       }}

@@ -4,12 +4,26 @@ import { Plus, MapPin, Users, UserCheck, QrCode, MoreVertical, Building2, Star }
 import { toast } from 'react-hot-toast';
 import { branchApi } from '../../services/branchApi';
 import { useBranch } from '../../context/BranchContext';
+import LocationPicker from '../../components/ui/LocationPicker';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const CreateBranchModal = ({ onClose, onCreated }) => {
-  const [form, setForm] = useState({ name: '', address: '', city: '', state: '', pincode: '', phone: '', email: '', description: '' });
+  const [form, setForm] = useState({ name: '', address: '', city: '', state: '', pincode: '', phone: '', email: '', description: '', lat: '', lng: '' });
   const [saving, setSaving] = useState(false);
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleLocationChange = ({ lat, lng, city, state, pincode, address }) => {
+    setForm((f) => ({
+      ...f,
+      lat: String(lat),
+      lng: String(lng),
+      city: city || f.city,
+      state: state || f.state,
+      pincode: pincode || f.pincode,
+      address: address || f.address,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,14 +43,20 @@ const CreateBranchModal = ({ onClose, onCreated }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto pt-16 px-4 pb-4 mt-0">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-4 p-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4">Add New Branch / Location</h3>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-gray-700">Branch Name *</label>
             <input name="name" value={form.name} onChange={handleChange} placeholder="e.g. Downtown Branch, Koramangala" className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary" />
           </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Location</label>
+            <LocationPicker lat={form.lat} lng={form.lng} onChange={handleLocationChange} />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700">City</label>
@@ -80,6 +100,7 @@ const CreateBranchModal = ({ onClose, onCreated }) => {
 const BranchesList = () => {
   const navigate = useNavigate();
   const { branches, switchBranch, selectedBranchId, refreshBranches } = useBranch();
+  const permissions = usePermissions();
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -101,13 +122,15 @@ const BranchesList = () => {
           <h1 className="text-xl font-bold text-gray-900">Branches & Locations</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage all your gym locations from one place</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
-        >
-          <Plus size={16} />
-          Add Branch
-        </button>
+        {permissions.canCreateBranch && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+          >
+            <Plus size={16} />
+            Add Branch
+          </button>
+        )}
       </div>
 
       {branches.length === 0 ? (

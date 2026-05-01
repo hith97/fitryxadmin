@@ -11,6 +11,7 @@ import { BusinessDataProvider } from './context/BusinessDataContext';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import SetupPassword from './pages/Auth/SetupPassword';
 import Partners from './pages/Admin/Partners';
 import PartnerDetail from './pages/Admin/PartnerDetail';
 import MembersList from './pages/Members/MembersList';
@@ -26,6 +27,7 @@ import WhatsApp from './pages/Settings/WhatsApp';
 import BillingAndPlan from './pages/Settings/BillingAndPlan';
 import NotificationsSettings from './pages/Settings/NotificationsSettings';
 import ImportData from './pages/Settings/ImportData';
+import RolePermissions from './pages/Settings/RolePermissions';
 import Leads from './pages/Leads';
 import Plans from './pages/Plans';
 import Staff from './pages/Staff';
@@ -38,6 +40,7 @@ import AdminLeads from './pages/Admin/AdminLeads';
 import AdminPackages from './pages/Admin/AdminPackages';
 import BranchesList from './pages/Branches/BranchesList';
 import BranchDetail from './pages/Branches/BranchDetail';
+import PTCollections from './pages/PTCollections';
 
 const queryClient = new QueryClient();
 
@@ -123,6 +126,7 @@ const AppRoutes = () => {
       <Route path="/" element={<HomeRedirect />} />
       <Route path="login" element={<Login />} />
       <Route path="register" element={<Register />} />
+      <Route path="setup-password" element={<SetupPassword />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
@@ -141,7 +145,7 @@ const AppRoutes = () => {
           <Route path="leads" element={<Leads />} />
           <Route path="plans" element={<Plans />} />
           <Route path="staff" element={<Staff />} />
-          <Route path="pt-collections" element={<Placeholder title="PT Collections" />} />
+          <Route path="pt-collections" element={<PTCollections />} />
           <Route path="offers" element={<Placeholder title="Offers" />} />
           <Route path="subscriptions" element={<Subscriptions />} />
           <Route path="billing" element={<Placeholder title="Billing" />} />
@@ -163,6 +167,7 @@ const AppRoutes = () => {
             <Route path="settings/billing"          element={<BillingAndPlan />} />
             <Route path="settings/notifications"    element={<NotificationsSettings />} />
             <Route path="settings/import"           element={<ImportData />} />
+            <Route path="settings/role-permissions" element={<RolePermissions />} />
           </Route>
           <Route path="*" element={<Placeholder title="Page Not Found" />} />
         </Route>

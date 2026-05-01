@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Phone, Mail, Users, UserCheck, QrCode,
-  Plus, Trash2, Building2, Star, Shield, UserCog, Edit3, Save, X,
+  Plus, Trash2, Building2, Star, Shield, UserCog, Edit3, X, Search, UserPlus,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { branchApi } from '../../services/branchApi';
+import { staffApi } from '../../services/planApi';
 import { useBranch } from '../../context/BranchContext';
+import { usePermissions } from '../../hooks/usePermissions';
+import QRCodeCard from '../../components/ui/QRCodeCard';
 
 const ROLE_LABELS = {
   OWNER: { label: 'Owner', color: 'text-purple-700 bg-purple-50' },
@@ -15,16 +18,54 @@ const ROLE_LABELS = {
 };
 
 const AssignAccessModal = ({ branchId, onClose, onAssigned }) => {
-  const [form, setForm] = useState({ phone: '', email: '', role: 'BRANCH_MANAGER' });
+  const permissions = usePermissions();
+  const [tab, setTab] = useState('staff'); // 'staff' | 'invite'
+  const [role, setRole] = useState(permissions.canAssignBranchManager ? 'BRANCH_MANAGER' : 'STAFF');
   const [saving, setSaving] = useState(false);
+
+  // Staff search state
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [showDrop, setShowDrop] = useState(false);
+  const dropRef = useRef(null);
+
+  // Invite by email state
+  const [inviteEmail, setInviteEmail] = useState('');
+
+  useEffect(() => {
+    staffApi.list()
+      .then((data) => setStaffList(Array.isArray(data) ? data : data?.staff ?? []))
+      .catch(() => setStaffList([]))
+      .finally(() => setStaffLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) setShowDrop(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = staffList.filter((s) => {
+    const q = query.toLowerCase();
+    return (s.name || '').toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q);
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.phone && !form.email) return toast.error('Enter phone or email to find the user');
+    if (tab === 'staff' && !selected) return toast.error('Select a staff member.');
+    if (tab === 'invite' && !inviteEmail.trim()) return toast.error('Enter an email address.');
+
     setSaving(true);
     try {
-      await branchApi.assignAccess(branchId, form);
-      toast.success('Access assigned successfully');
+      await branchApi.assignAccess(branchId, {
+        email: tab === 'staff' ? selected.email : inviteEmail.trim(),
+        role,
+      });
+      toast.success(tab === 'invite' ? 'Invite sent — they will receive a login OTP by email.' : 'Access assigned successfully.');
       onAssigned();
     } catch (err) {
       toast.error(err.message || 'Failed to assign access');
@@ -36,44 +77,119 @@ const AssignAccessModal = ({ branchId, onClose, onAssigned }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Assign Branch Access</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          The user must already have an account on Fitryx (via phone OTP sign-in).
-        </p>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-bold text-gray-900">Assign Branch Access</h3>
+          <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
+        </div>
+
+        {/* Tab toggle */}
+        <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-1 mb-5">
+          <button
+            type="button"
+            onClick={() => { setTab('staff'); setSelected(null); setQuery(''); }}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${tab === 'staff' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <UserCheck size={14} /> Existing Staff
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTab('invite'); setSelected(null); }}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${tab === 'invite' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <UserPlus size={14} /> Invite by Email
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700">Phone Number</label>
-            <input
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              placeholder="+91 98765 43210"
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">or Email</label>
-            <input
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="manager@example.com"
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {tab === 'staff' ? (
+            <div ref={dropRef} className="relative">
+              <label className="text-sm font-medium text-gray-700">Search staff member</label>
+              <div className="relative mt-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  value={selected ? `${selected.name || selected.email}` : query}
+                  onChange={(e) => { setQuery(e.target.value); setSelected(null); setShowDrop(true); }}
+                  onFocus={() => setShowDrop(true)}
+                  placeholder="Search by name or email…"
+                  className="w-full rounded-lg border border-gray-200 pl-8 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              {showDrop && !selected && (
+                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+                  {staffLoading ? (
+                    <div className="px-4 py-3 text-sm text-gray-400">Loading…</div>
+                  ) : filtered.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-400">No staff found.</div>
+                  ) : (
+                    filtered.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); setSelected(s); setQuery(''); setShowDrop(false); }}
+                        className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-2.5 text-left text-sm last:border-0 hover:bg-gray-50"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light text-xs font-bold text-primary uppercase">
+                          {(s.name || s.email || '?')[0]}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{s.name || '—'}</div>
+                          <div className="text-xs text-gray-500">{s.email}</div>
+                        </div>
+                        <span className="ml-auto text-[10px] font-semibold text-gray-400">{s.role}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {selected && (
+                <div className="mt-2 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary-light px-3 py-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-primary uppercase">
+                    {(selected.name || selected.email || '?')[0]}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{selected.name || '—'}</div>
+                    <div className="text-xs text-gray-500">{selected.email}</div>
+                  </div>
+                  <button type="button" onClick={() => setSelected(null)} className="ml-auto text-gray-400 hover:text-gray-600">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="text-sm font-medium text-gray-700">Email address</label>
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="manager@example.com"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="mt-1.5 text-xs text-gray-400">
+                A login OTP will be sent to this email. If they don't have an account, one will be created.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="text-sm font-medium text-gray-700">Role</label>
             <select
-              value={form.role}
-              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="BRANCH_MANAGER">Branch Manager — full branch operations</option>
+              {permissions.canAssignBranchManager && (
+                <option value="BRANCH_MANAGER">Branch Manager — full branch operations</option>
+              )}
               <option value="STAFF">Staff — limited access (check-ins, schedule)</option>
             </select>
           </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-primary py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60">
-              {saving ? 'Assigning...' : 'Assign Access'}
+              {saving ? 'Assigning…' : tab === 'invite' ? 'Send Invite' : 'Assign Access'}
             </button>
           </div>
         </form>
@@ -366,16 +482,19 @@ const BranchDetail = () => {
             <p className="text-xs text-gray-500 mb-4">
               Unique QR code for this branch. Members scan this for check-in.
             </p>
-            {qr ? (
-              <div className="rounded-xl bg-gray-50 p-4 text-center">
-                <div className="text-xs text-gray-500 mb-2 font-mono break-all">{qr.qrToken}</div>
-                <p className="text-xs text-gray-400">Token ID for this branch's QR</p>
-              </div>
-            ) : (
-              <div className="rounded-xl bg-gray-50 p-6 text-center text-gray-400 text-sm">
-                QR not available
-              </div>
-            )}
+            <div className="flex justify-center">
+              {qr?.qrToken ? (
+                <QRCodeCard
+                  value={qr.qrToken}
+                  label={branch?.name}
+                  size={180}
+                />
+              ) : (
+                <div className="rounded-xl bg-gray-50 p-6 text-center text-gray-400 text-sm w-full">
+                  QR not available
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="card p-5">

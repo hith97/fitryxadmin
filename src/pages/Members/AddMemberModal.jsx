@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Avatar from '../../components/ui/Avatar';
 import { memberApi, planApi, leadApi } from '../../services/planApi';
+import { useBranch } from '../../context/BranchContext';
 
 // ── Helpers (outside component to prevent focus loss) ──────────
 const GENDERS = ['male', 'female', 'nonbinary', 'nottosay'];
@@ -50,6 +51,7 @@ const EMPTY = {
   joiningDate: new Date().toISOString().split('T')[0],
   planId: '', startDate: new Date().toISOString().split('T')[0],
   amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+  branchId: '',
 };
 
 const STEPS = ['Personal & Contact', 'Physical & Plan'];
@@ -72,6 +74,7 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const { branches, selectedBranchId } = useBranch();
 
   const { data: plansData = [] } = useQuery({
     queryKey: ['plans'],
@@ -112,12 +115,13 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
             : new Date().toISOString().split('T')[0],
           planId: '', startDate: new Date().toISOString().split('T')[0],
           amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+          branchId: editMember.businessId ?? selectedBranchId ?? '',
         });
       } else {
-        setForm(EMPTY);
+        setForm({ ...EMPTY, branchId: selectedBranchId ?? '' });
       }
     }
-  }, [isOpen, editMember]);
+  }, [isOpen, editMember, selectedBranchId]);
 
   const set = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -146,8 +150,8 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
   };
 
   const mutation = useMutation({
-    mutationFn: (payload) =>
-      isEdit ? memberApi.update(editMember.id, payload) : memberApi.create(payload),
+    mutationFn: ({ payload, branchId }) =>
+      isEdit ? memberApi.update(editMember.id, payload) : memberApi.create(payload, branchId),
     onSuccess: () => {
       toast.success(`Member ${isEdit ? 'updated' : 'added'} successfully.`);
       onSaved?.();
@@ -184,7 +188,7 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
       payload.discountAmount = form.discountAmount !== '' ? Number(form.discountAmount) : undefined;
       payload.paymentMethod = form.paymentMethod || undefined;
     }
-    mutation.mutate(payload);
+    mutation.mutate({ payload, branchId: form.branchId || selectedBranchId });
   };
 
   const activePlans = Array.isArray(plansData) ? plansData.filter((p) => p.isActive) : [];
@@ -193,6 +197,19 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
   const step0 = (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
       <div className="space-y-5">
+        {!isEdit && branches.length > 1 && (
+          <SectionCard title="Branch">
+            <FormField label="Assign to Branch">
+              <select value={form.branchId} onChange={(e) => set('branchId', e.target.value)} className={inputCls(false)}>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}{b.city ? ` — ${b.city}` : ''}{b.isMainBranch ? ' (Main)' : ''}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </SectionCard>
+        )}
         <SectionCard title="Personal Information">
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Full Name" required error={errors.fullName} className="md:col-span-2">

@@ -9,6 +9,7 @@ import {
   MapPin,
   MessageCircle,
   Settings,
+  Shield,
   User2,
   Wallet,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { label: 'Billing & Plan',    path: '/settings/billing',          icon: Wallet },
   { label: 'Notifications',     path: '/settings/notifications',    icon: Bell },
   { label: 'Import Data',       path: '/settings/import',           icon: Settings },
+  { label: 'Role Permissions',  path: '/settings/role-permissions', icon: Shield },
 ];
 
 const SettingsLayout = () => (

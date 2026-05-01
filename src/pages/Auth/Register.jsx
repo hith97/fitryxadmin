@@ -21,6 +21,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
+import LocationPicker from '../../components/ui/LocationPicker';
 import { AUTH_TOKEN_STORAGE_KEY } from '../../config/auth';
 import { useAuth } from '../../context/AuthContext';
 import { partnerApi } from '../../services/partnerApi';
@@ -51,6 +52,8 @@ const createInitialForm = () => ({
   hours: defaultBusinessHours.map((item) => ({ ...item })),
   emailOtp: '',
   phoneOtp: '',
+  lat: '',
+  lng: '',
 });
 
 const InputField = ({ label, error, className = '', trailing, inputClassName = '', ...props }) => (
@@ -178,6 +181,25 @@ const Register = () => {
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
+  const handleLocationChange = ({ lat, lng, city, state, pincode, address }) => {
+    setForm((current) => ({
+      ...current,
+      lat: String(lat),
+      lng: String(lng),
+      city: city || current.city,
+      state: state || current.state,
+      pincode: pincode || current.pincode,
+      address: address || current.address,
+    }));
+    setErrors((current) => ({
+      ...current,
+      city: undefined,
+      state: undefined,
+      pincode: undefined,
+      address: undefined,
+    }));
   };
 
   const setHourField = (index, field, value) => {
@@ -353,8 +375,8 @@ const Register = () => {
       city: form.city.trim(),
       state: form.state.trim(),
       pincode: form.pincode.trim(),
-      lat: '',
-      lng: '',
+      lat: form.lat,
+      lng: form.lng,
       description: form.businessDescription.trim(),
       timings: JSON.stringify(buildTimingsPayload(form.hours)),
       subcategoryIds: JSON.stringify(form.subcategoryIds),
@@ -685,8 +707,13 @@ const Register = () => {
               <div className="text-center">
                 <h2 className="text-3xl font-bold tracking-tight text-slate-900">Tell us about your business</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-500">
-                  Add the core details we need before you configure categories and hours.
+                  Pin your location on the map, then add a description and verify the auto-filled address fields.
                 </p>
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-semibold text-slate-700">Location</div>
+                <LocationPicker lat={form.lat} lng={form.lng} onChange={handleLocationChange} />
               </div>
 
               <div className="grid gap-5 md:grid-cols-2">
@@ -714,20 +741,20 @@ const Register = () => {
               </div>
 
               <TextAreaField
-                label="Business Description"
-                value={form.businessDescription}
-                onChange={(event) => setField('businessDescription', event.target.value)}
-                placeholder="Describe your gym, classes, or sports facility..."
-                error={errors.businessDescription}
-              />
-
-              <TextAreaField
                 label="Full Address"
                 rows={3}
                 value={form.address}
                 onChange={(event) => setField('address', event.target.value)}
                 placeholder="Street, locality, landmark, building, and floor"
                 error={errors.address}
+              />
+
+              <TextAreaField
+                label="Business Description"
+                value={form.businessDescription}
+                onChange={(event) => setField('businessDescription', event.target.value)}
+                placeholder="Describe your gym, classes, or sports facility..."
+                error={errors.businessDescription}
               />
             </div>
           ) : null}
