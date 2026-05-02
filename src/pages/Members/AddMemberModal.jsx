@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Users } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Calendar, CheckCircle2, Pencil, Users } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
@@ -11,6 +11,11 @@ import { useBranch } from '../../context/BranchContext';
 // ── Helpers (outside component to prevent focus loss) ──────────
 const GENDERS = ['male', 'female', 'nonbinary', 'nottosay'];
 const PAYMENT_METHODS = ['cash', 'upi', 'card', 'bank_transfer', 'other'];
+const PAYMENT_STATUSES = [
+  { value: 'PAID',    label: 'Fully Paid' },
+  { value: 'PARTIAL', label: 'Partial' },
+  { value: 'PENDING', label: 'Pending' },
+];
 
 const inputCls = (err) =>
   `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all ${
@@ -49,8 +54,10 @@ const EMPTY = {
   address: '', city: '', state: '', postcode: '',
   weight: '', height: '',
   joiningDate: new Date().toISOString().split('T')[0],
+  memberNumber: '',
   planId: '', startDate: new Date().toISOString().split('T')[0],
   amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+  paymentStatus: 'PAID', remainingAmount: '', nextPaymentDate: '',
   branchId: '',
 };
 
@@ -74,12 +81,22 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [editingMemberId, setEditingMemberId] = useState(false);
+  const [memberSuffix, setMemberSuffix] = useState('');
+  const memberIdInputRef = useRef(null);
   const { branches, selectedBranchId } = useBranch();
 
   const { data: plansData = [] } = useQuery({
     queryKey: ['plans'],
     queryFn: planApi.list,
     enabled: isOpen,
+  });
+
+  const { data: nextNumData } = useQuery({
+    queryKey: ['member-next-number'],
+    queryFn: memberApi.nextNumber,
+    enabled: isOpen,
+    staleTime: 0,
   });
 
   const { data: leadsData } = useQuery({
@@ -97,6 +114,8 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
       setStep(0);
       setErrors({});
       setSelectedLeadId(null);
+      setEditingMemberId(false);
+      setMemberSuffix('');
       if (editMember) {
         setForm({
           fullName: editMember.fullName ?? '',
@@ -113,8 +132,10 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
           joiningDate: editMember.joiningDate
             ? editMember.joiningDate.split('T')[0]
             : new Date().toISOString().split('T')[0],
+          memberNumber: editMember.memberNumber ?? '',
           planId: '', startDate: new Date().toISOString().split('T')[0],
           amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+          paymentStatus: 'PAID', remainingAmount: '', nextPaymentDate: '',
           branchId: editMember.businessId ?? selectedBranchId ?? '',
         });
       } else {
@@ -122,6 +143,23 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
       }
     }
   }, [isOpen, editMember, selectedBranchId]);
+
+  // populate memberNumber + suffix once next-number API resolves
+  useEffect(() => {
+    if (!nextNumData?.memberNumber || !isOpen) return;
+    const prefix = nextNumData.prefix;
+    if (isEdit && editMember?.memberNumber) {
+      // In edit mode: keep existing number, just extract the digits after the prefix
+      const existing = editMember.memberNumber;
+      const suffix = existing.startsWith(prefix) ? existing.slice(prefix.length) : existing.replace(/^[A-Z]+/, '');
+      setMemberSuffix(suffix);
+      setForm((f) => ({ ...f, memberNumber: existing }));
+    } else if (!isEdit) {
+      const suffix = nextNumData.memberNumber.slice(prefix.length);
+      setMemberSuffix(suffix);
+      setForm((f) => ({ ...f, memberNumber: nextNumData.memberNumber }));
+    }
+  }, [nextNumData, isOpen]);
 
   const set = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -180,6 +218,9 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
       weight: form.weight !== '' ? Number(form.weight) : undefined,
       height: form.height !== '' ? Number(form.height) : undefined,
       joiningDate: form.joiningDate || undefined,
+      memberNumber: nextNumData?.prefix
+        ? `${nextNumData.prefix}${memberSuffix.trim() || form.memberNumber.slice(nextNumData.prefix.length)}`
+        : form.memberNumber.trim() || undefined,
     };
     if (!isEdit && form.planId) {
       payload.planId = form.planId;
@@ -187,6 +228,9 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
       payload.amountPaid = form.amountPaid !== '' ? Number(form.amountPaid) : undefined;
       payload.discountAmount = form.discountAmount !== '' ? Number(form.discountAmount) : undefined;
       payload.paymentMethod = form.paymentMethod || undefined;
+      payload.paymentStatus = form.paymentStatus;
+      payload.remainingAmount = form.remainingAmount !== '' ? Number(form.remainingAmount) : undefined;
+      payload.nextPaymentDate = form.nextPaymentDate || undefined;
     }
     mutation.mutate({ payload, branchId: form.branchId || selectedBranchId });
   };
@@ -212,6 +256,64 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
         )}
         <SectionCard title="Personal Information">
           <div className="grid gap-4 md:grid-cols-2">
+
+            {/* ── Member ID (top, full-width) ── */}
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Member ID</label>
+              <div className="flex items-stretch gap-0 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 focus-within:border-primary focus-within:bg-white transition-all">
+                {/* Prefix — always locked */}
+                <div className="flex items-center gap-1.5 border-r border-slate-200 bg-slate-100 px-4 select-none">
+                  <span className="font-mono text-base font-bold tracking-widest text-slate-500">
+                    {nextNumData?.prefix ?? '—'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium hidden sm:block">fixed</span>
+                </div>
+
+                {/* Suffix — editable or display */}
+                {editingMemberId ? (
+                  <>
+                    <input
+                      ref={memberIdInputRef}
+                      value={memberSuffix}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setMemberSuffix(val);
+                      }}
+                      placeholder="1023"
+                      className="flex-1 bg-transparent px-4 py-3 font-mono text-base font-bold tracking-widest text-slate-800 outline-none placeholder:text-slate-300"
+                      maxLength={4}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditingMemberId(false)}
+                      className="flex items-center gap-1.5 border-l border-slate-200 bg-primary/5 px-4 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors shrink-0"
+                    >
+                      <CheckCircle2 size={14} /> Done
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-1 items-center px-4 py-3">
+                      <span className="font-mono text-base font-bold tracking-widest text-slate-800">
+                        {memberSuffix || <span className="text-slate-300 text-sm font-normal">loading...</span>}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setEditingMemberId(true); setTimeout(() => memberIdInputRef.current?.select(), 50); }}
+                      className="flex items-center gap-1.5 border-l border-slate-200 px-4 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-primary transition-colors shrink-0"
+                    >
+                      <Pencil size={13} /> Change
+                    </button>
+                  </>
+                )}
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                <span className="font-semibold text-slate-500">{nextNumData?.prefix ?? ''}</span> prefix is fixed · only the 4-digit number can be changed
+              </p>
+            </div>
+
             <FormField label="Full Name" required error={errors.fullName} className="md:col-span-2">
               <input value={form.fullName} onChange={(e) => set('fullName', e.target.value)}
                 placeholder="e.g. Ravi Sharma" className={inputCls(errors.fullName)} />
@@ -372,6 +474,47 @@ const AddMemberModal = ({ isOpen, onClose, onSaved, editMember = null }) => {
                     ))}
                   </select>
                 </FormField>
+
+                {/* Payment Status */}
+                <FormField label="Payment Status" className="md:col-span-2">
+                  <div className="flex gap-2">
+                    {PAYMENT_STATUSES.map((ps) => (
+                      <button
+                        key={ps.value}
+                        type="button"
+                        onClick={() => set('paymentStatus', ps.value)}
+                        className={`flex-1 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                          form.paymentStatus === ps.value
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-primary/40'
+                        }`}
+                      >
+                        {ps.label}
+                      </button>
+                    ))}
+                  </div>
+                </FormField>
+
+                {/* Partial / pending extra fields */}
+                {form.paymentStatus !== 'PAID' && (
+                  <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <div className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+                      <Calendar size={13} /> Installment / Partial Payment Details
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <FormField label="Remaining Amount (₹)">
+                        <input type="number" min="0" value={form.remainingAmount}
+                          onChange={(e) => set('remainingAmount', e.target.value)}
+                          placeholder="e.g. 1000" className={inputCls(false)} />
+                      </FormField>
+                      <FormField label="Next Payment Date">
+                        <input type="date" value={form.nextPaymentDate}
+                          onChange={(e) => set('nextPaymentDate', e.target.value)}
+                          className={inputCls(false)} />
+                      </FormField>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

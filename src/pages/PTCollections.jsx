@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Dumbbell, UserPlus, X, Users, ChevronDown, Search, ArrowRight } from 'lucide-react';
+import { Dumbbell, UserPlus, X, Users, ChevronDown, Search, ArrowRight, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { planApi, subscriptionApi, staffApi, memberApi } from '../services/planApi';
@@ -22,10 +22,21 @@ const Avatar = ({ name, photo, size = 8 }) => {
   );
 };
 
+const PAYMENT_METHODS = ['cash', 'upi', 'card', 'bank_transfer', 'other'];
+const PAYMENT_STATUSES = [
+  { value: 'PAID',    label: 'Fully Paid' },
+  { value: 'PARTIAL', label: 'Partial' },
+  { value: 'PENDING', label: 'Pending' },
+];
+
 // ── Enroll Member Modal ──────────────────────────────────────────
 const EnrollModal = ({ ptPlans, trainers, onClose }) => {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ memberId: '', planId: '', trainerId: '', amountPaid: '', startDate: '' });
+  const [form, setForm] = useState({
+    memberId: '', planId: '', trainerId: '', amountPaid: '', startDate: '',
+    paymentMethod: 'cash', discountAmount: '', paymentStatus: 'PAID',
+    remainingAmount: '', nextPaymentDate: '',
+  });
   const [memberQuery, setMemberQuery] = useState('');
   const [memberResults, setMemberResults] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -61,6 +72,11 @@ const EnrollModal = ({ ptPlans, trainers, onClose }) => {
         planId: form.planId,
         trainerId: form.trainerId || undefined,
         amountPaid: form.amountPaid ? Number(form.amountPaid) : undefined,
+        discountAmount: form.discountAmount ? Number(form.discountAmount) : undefined,
+        paymentMethod: form.paymentMethod || undefined,
+        paymentStatus: form.paymentStatus,
+        remainingAmount: form.remainingAmount ? Number(form.remainingAmount) : undefined,
+        nextPaymentDate: form.nextPaymentDate || undefined,
         startDate: form.startDate || undefined,
       });
       toast.success('Member enrolled in PT.');
@@ -158,10 +174,60 @@ const EnrollModal = ({ ptPlans, trainers, onClose }) => {
                   placeholder={selectedPlan ? String(selectedPlan.price) : 'Auto from plan'} className={inputCls} />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Discount (₹)</label>
+                <input type="number" value={form.discountAmount} onChange={(e) => set('discountAmount', e.target.value)}
+                  placeholder="e.g. 0" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Payment Mode</label>
+                <select value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1).replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Start Date</label>
                 <input type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} className={inputCls} />
               </div>
             </div>
+
+            {/* Payment status */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Payment Status</label>
+              <div className="flex gap-2">
+                {PAYMENT_STATUSES.map((ps) => (
+                  <button key={ps.value} type="button" onClick={() => set('paymentStatus', ps.value)}
+                    className={`flex-1 rounded-xl border py-2 text-xs font-semibold transition-all ${
+                      form.paymentStatus === ps.value
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/40'
+                    }`}>
+                    {ps.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Partial / pending extra fields */}
+            {form.paymentStatus !== 'PAID' && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                  <Calendar size={12} /> Installment Details
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Remaining Amount (₹)</label>
+                    <input type="number" value={form.remainingAmount} onChange={(e) => set('remainingAmount', e.target.value)}
+                      placeholder="e.g. 1000" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Next Payment Date</label>
+                    <input type="date" value={form.nextPaymentDate} onChange={(e) => set('nextPaymentDate', e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>

@@ -96,6 +96,8 @@ export const classApi = {
 export const subscriptionApi = {
   list: (query = {}) => request('/partner/subscriptions', { query }),
 
+  stats: () => request('/partner/subscriptions/stats'),
+
   create: (data) => request('/partner/subscriptions', { method: 'POST', body: data }),
 
   renew: (id, data) => request(`/partner/subscriptions/${id}/renew`, { method: 'PATCH', body: data }),
@@ -127,11 +129,17 @@ export const memberApi = {
 
   get: (id) => request(`/partner/members/${id}`),
 
+  nextNumber: () => request('/partner/members/next-number'),
+
   create: (data, branchId) => request('/partner/members', { method: 'POST', body: data, branchId }),
 
   update: (id, data) => request(`/partner/members/${id}`, { method: 'PATCH', body: data }),
 
   remove: (id) => request(`/partner/members/${id}`, { method: 'DELETE' }),
+
+  importPreview: (rows) => request('/partner/members/import/preview', { method: 'POST', body: { rows } }),
+
+  importConfirm: (rows) => request('/partner/members/import/confirm', { method: 'POST', body: { rows } }),
 };
 
 // ── Expenses ─────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import {
   Search,
   X,
   Users,
+  Calendar,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,12 +32,31 @@ const STATUS_CFG = {
 };
 
 const PAYMENT_METHODS = ['cash', 'upi', 'card', 'bank_transfer', 'other'];
+const PAYMENT_STATUSES = [
+  { value: 'PAID',    label: 'Fully Paid' },
+  { value: 'PARTIAL', label: 'Partial Payment' },
+  { value: 'PENDING', label: 'Pending' },
+];
 
 const StatusBadge = ({ status }) => {
   const cfg = STATUS_CFG[status] || STATUS_CFG.EXPIRED;
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cfg.cls}`}>
       {cfg.label}
+    </span>
+  );
+};
+
+const PaymentStatusBadge = ({ status }) => {
+  const cfg = {
+    PAID:    'bg-emerald-50 text-emerald-700',
+    PARTIAL: 'bg-amber-50 text-amber-700',
+    PENDING: 'bg-rose-50 text-rose-600',
+  }[status] || 'bg-slate-100 text-slate-500';
+  const label = { PAID: 'Paid', PARTIAL: 'Partial', PENDING: 'Pending' }[status] || status;
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg}`}>
+      {label}
     </span>
   );
 };
@@ -62,6 +82,7 @@ const EMPTY_FORM = {
   memberId: '', planId: '',
   startDate: new Date().toISOString().split('T')[0],
   amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+  paymentStatus: 'PAID', remainingAmount: '', nextPaymentDate: '',
 };
 
 const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
@@ -81,7 +102,7 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
   });
 
   const members = membersData?.data ?? [];
-  const activePlans = Array.isArray(plansData) ? plansData.filter((p) => p.isActive) : [];
+  const activePlans = Array.isArray(plansData) ? plansData.filter((p) => p.isActive && !p.isPT) : [];
   const selectedPlan = activePlans.find((p) => p.id === form.planId);
 
   React.useEffect(() => {
@@ -97,6 +118,7 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
     const e = {};
     if (!form.memberId) e.memberId = 'Select a member.';
     if (!form.planId) e.planId = 'Select a plan.';
+    if (form.paymentStatus !== 'PAID' && !form.nextPaymentDate) e.nextPaymentDate = 'Set next payment date.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -120,15 +142,20 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
       amountPaid: form.amountPaid !== '' ? Number(form.amountPaid) : undefined,
       discountAmount: form.discountAmount !== '' ? Number(form.discountAmount) : undefined,
       paymentMethod: form.paymentMethod || undefined,
+      paymentStatus: form.paymentStatus,
+      remainingAmount: form.remainingAmount !== '' ? Number(form.remainingAmount) : undefined,
+      nextPaymentDate: form.nextPaymentDate || undefined,
     });
   };
+
+  const isPartial = form.paymentStatus !== 'PAID';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="New Subscription"
-      width="620px"
+      width="640px"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -166,7 +193,10 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
                     <Avatar name={m.fullName} size="xs" />
                     <div>
                       <div className="font-semibold">{m.fullName}</div>
-                      <div className="text-[11px] text-slate-400">{m.phone}</div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                        <span>{m.phone}</span>
+                        {m.memberNumber && <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-600">{m.memberNumber}</span>}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -222,6 +252,47 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
               placeholder="e.g. 0" className={inputCls(false)} />
           </FormField>
         </div>
+
+        {/* Payment status */}
+        <FormField label="Payment Status">
+          <div className="flex gap-2">
+            {PAYMENT_STATUSES.map((ps) => (
+              <button
+                key={ps.value}
+                type="button"
+                onClick={() => set('paymentStatus', ps.value)}
+                className={`flex-1 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                  form.paymentStatus === ps.value
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-primary/40'
+                }`}
+              >
+                {ps.label}
+              </button>
+            ))}
+          </div>
+        </FormField>
+
+        {/* Partial / pending extra fields */}
+        {isPartial && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+            <div className="text-xs font-semibold text-amber-700 mb-1 flex items-center gap-1.5">
+              <Calendar size={13} /> Installment / Partial Payment Details
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <FormField label="Remaining Amount (₹)" error={null}>
+                <input type="number" min="0" value={form.remainingAmount}
+                  onChange={(e) => set('remainingAmount', e.target.value)}
+                  placeholder="e.g. 1000" className={inputCls(false)} />
+              </FormField>
+              <FormField label="Next Payment Date" error={errors.nextPaymentDate}>
+                <input type="date" value={form.nextPaymentDate}
+                  onChange={(e) => set('nextPaymentDate', e.target.value)}
+                  className={inputCls(errors.nextPaymentDate)} />
+              </FormField>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -229,7 +300,10 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
 
 // ── Renew Modal ────────────────────────────────────────────────
 const RenewModal = ({ isOpen, onClose, subscription, onSaved }) => {
-  const [form, setForm] = useState({ planId: '', amountPaid: '', discountAmount: '', paymentMethod: 'cash' });
+  const [form, setForm] = useState({
+    planId: '', amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+    paymentStatus: 'PAID', remainingAmount: '', nextPaymentDate: '',
+  });
 
   const { data: plansData = [] } = useQuery({
     queryKey: ['plans'],
@@ -240,11 +314,13 @@ const RenewModal = ({ isOpen, onClose, subscription, onSaved }) => {
 
   React.useEffect(() => {
     if (isOpen && subscription) {
-      setForm({ planId: subscription.planId, amountPaid: '', discountAmount: '', paymentMethod: 'cash' });
+      setForm({ planId: subscription.planId, amountPaid: '', discountAmount: '', paymentMethod: 'cash',
+        paymentStatus: 'PAID', remainingAmount: '', nextPaymentDate: '' });
     }
   }, [isOpen, subscription]);
 
   const set = (f, v) => setForm((prev) => ({ ...prev, [f]: v }));
+  const isPartial = form.paymentStatus !== 'PAID';
 
   const mutation = useMutation({
     mutationFn: (payload) => subscriptionApi.renew(subscription.id, payload),
@@ -261,7 +337,7 @@ const RenewModal = ({ isOpen, onClose, subscription, onSaved }) => {
       isOpen={isOpen}
       onClose={onClose}
       title={`Renew — ${subscription?.member?.fullName ?? ''}`}
-      width="520px"
+      width="540px"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -272,29 +348,69 @@ const RenewModal = ({ isOpen, onClose, subscription, onSaved }) => {
         </>
       }
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        <FormField label="Plan" className="md:col-span-2">
-          <select value={form.planId} onChange={(e) => set('planId', e.target.value)} className={inputCls(false)}>
-            {activePlans.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} — ₹{p.price} / {p.duration}d</option>
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <FormField label="Plan">
+              <select value={form.planId} onChange={(e) => set('planId', e.target.value)} className={inputCls(false)}>
+                {activePlans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — ₹{p.price} / {p.duration}d</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Amount Paid (₹)">
+            <input type="number" min="0" value={form.amountPaid}
+              onChange={(e) => set('amountPaid', e.target.value)} placeholder="e.g. 2000" className={inputCls(false)} />
+          </FormField>
+          <FormField label="Discount (₹)">
+            <input type="number" min="0" value={form.discountAmount}
+              onChange={(e) => set('discountAmount', e.target.value)} placeholder="e.g. 0" className={inputCls(false)} />
+          </FormField>
+          <div className="md:col-span-2">
+            <FormField label="Payment Method">
+              <select value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls(false)}>
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1).replace('_', ' ')}</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+        </div>
+
+        <FormField label="Payment Status">
+          <div className="flex gap-2">
+            {PAYMENT_STATUSES.map((ps) => (
+              <button key={ps.value} type="button" onClick={() => set('paymentStatus', ps.value)}
+                className={`flex-1 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                  form.paymentStatus === ps.value
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-primary/40'
+                }`}>
+                {ps.label}
+              </button>
             ))}
-          </select>
+          </div>
         </FormField>
-        <FormField label="Amount Paid (₹)">
-          <input type="number" min="0" value={form.amountPaid}
-            onChange={(e) => set('amountPaid', e.target.value)} placeholder="e.g. 2000" className={inputCls(false)} />
-        </FormField>
-        <FormField label="Discount (₹)">
-          <input type="number" min="0" value={form.discountAmount}
-            onChange={(e) => set('discountAmount', e.target.value)} placeholder="e.g. 0" className={inputCls(false)} />
-        </FormField>
-        <FormField label="Payment Method">
-          <select value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls(false)}>
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1).replace('_', ' ')}</option>
-            ))}
-          </select>
-        </FormField>
+
+        {isPartial && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+            <div className="text-xs font-semibold text-amber-700 mb-1 flex items-center gap-1.5">
+              <Calendar size={13} /> Installment Details
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <FormField label="Remaining Amount (₹)">
+                <input type="number" min="0" value={form.remainingAmount}
+                  onChange={(e) => set('remainingAmount', e.target.value)}
+                  placeholder="e.g. 1000" className={inputCls(false)} />
+              </FormField>
+              <FormField label="Next Payment Date">
+                <input type="date" value={form.nextPaymentDate}
+                  onChange={(e) => set('nextPaymentDate', e.target.value)} className={inputCls(false)} />
+              </FormField>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -361,6 +477,12 @@ const Subscriptions = () => {
 
   const queryStatus = activeTab === 'ALL' ? undefined : activeTab;
 
+  const { data: statsData } = useQuery({
+    queryKey: ['subscription-stats'],
+    queryFn: subscriptionApi.stats,
+    refetchOnWindowFocus: false,
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['subscriptions', { status: queryStatus, page }],
     queryFn: () => subscriptionApi.list({ status: queryStatus, page, limit: 20 }),
@@ -372,20 +494,33 @@ const Subscriptions = () => {
 
   const filtered = search
     ? subs.filter((s) =>
-        `${s.member?.fullName} ${s.member?.phone} ${s.plan?.name}`
+        `${s.member?.fullName} ${s.member?.phone} ${s.plan?.name} ${s.member?.memberNumber}`
           .toLowerCase().includes(search.toLowerCase())
       )
     : subs;
 
+  const getTabCount = (key) => {
+    if (!statsData) return null;
+    return statsData[key] ?? 0;
+  };
+
   const cancelMutation = useMutation({
     mutationFn: (id) => subscriptionApi.cancel(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); toast.success('Subscription cancelled.'); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
+      toast.success('Subscription cancelled.');
+    },
     onError: (err) => toast.error(err.message),
   });
 
   const pauseMutation = useMutation({
     mutationFn: (id) => subscriptionApi.pause(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); toast.success('Subscription paused.'); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
+      toast.success('Subscription paused.');
+    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -400,13 +535,20 @@ const Subscriptions = () => {
       <AddSubscriptionModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ['subscriptions'] })}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+          queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
+        }}
       />
       <RenewModal
         isOpen={Boolean(renewSub)}
         subscription={renewSub}
         onClose={() => setRenewSub(null)}
-        onSaved={() => { queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); setRenewSub(null); }}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+          queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
+          setRenewSub(null);
+        }}
       />
       <InvoiceModal
         isOpen={Boolean(invoiceSub)}
@@ -432,17 +574,24 @@ const Subscriptions = () => {
 
       {/* Tab stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-        {TABS.map((tab) => (
-          <button key={tab.key} onClick={() => { setActiveTab(tab.key); setPage(1); }}
-            className={`card p-5 border text-left transition-all ${
-              activeTab === tab.key ? 'border-primary bg-primary-light' : 'border-slate-200 hover:border-primary/30'
-            }`}>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{tab.label}</div>
-            <div className={`mt-2 text-3xl font-bold ${activeTab === tab.key ? 'text-primary' : 'text-slate-900'}`}>
-              {tab.key === 'ALL' ? meta.total : '—'}
-            </div>
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const count = getTabCount(tab.key);
+          return (
+            <button key={tab.key} onClick={() => { setActiveTab(tab.key); setPage(1); }}
+              className={`card p-5 border text-left transition-all ${
+                activeTab === tab.key ? 'border-primary bg-primary-light' : 'border-slate-200 hover:border-primary/30'
+              }`}>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{tab.label}</div>
+              <div className={`mt-2 text-3xl font-bold ${activeTab === tab.key ? 'text-primary' : 'text-slate-900'}`}>
+                {count === null ? (
+                  <span className="text-slate-300 text-2xl">...</span>
+                ) : (
+                  count.toLocaleString()
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
@@ -450,7 +599,7 @@ const Subscriptions = () => {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by member name, phone or plan..."
+            placeholder="Search by member name, phone, member ID or plan..."
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary focus:bg-white" />
         </div>
       </div>
@@ -487,11 +636,18 @@ const Subscriptions = () => {
                         <Avatar name={sub.member?.fullName} size="sm" />
                         <div>
                           <div className="font-semibold text-slate-900">{sub.member?.fullName}</div>
-                          {sub.member?.phone && (
-                            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                              <Phone size={10} /> {sub.member.phone}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {sub.member?.phone && (
+                              <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                                <Phone size={10} /> {sub.member.phone}
+                              </div>
+                            )}
+                            {sub.member?.memberNumber && (
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-500">
+                                {sub.member.memberNumber}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -530,6 +686,17 @@ const Subscriptions = () => {
                           {sub.discountAmount > 0 && (
                             <div className="text-[11px] text-emerald-600">
                               −₹{sub.discountAmount.toLocaleString()} off
+                            </div>
+                          )}
+                          {sub.paymentStatus && sub.paymentStatus !== 'PAID' && (
+                            <div className="mt-0.5">
+                              <PaymentStatusBadge status={sub.paymentStatus} />
+                              {sub.remainingAmount > 0 && (
+                                <div className="text-[10px] text-amber-600 mt-0.5">
+                                  ₹{sub.remainingAmount.toLocaleString()} due
+                                  {sub.nextPaymentDate ? ` · ${format(new Date(sub.nextPaymentDate), 'dd MMM')}` : ''}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

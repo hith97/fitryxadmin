@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, HelpCircle, Bell, LogOut, Menu, Search, UserCircle2, Building2, Star, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import Avatar from '../ui/Avatar';
 import { useAuth } from '../../context/AuthContext';
 import { useBranch } from '../../context/BranchContext';
+import { businessApi } from '../../services/planApi';
+import { API_BASE_URL } from '../../config/api';
 
 const BranchSelector = () => {
   const { branches, selectedBranch, switchBranch, isMultiBranch } = useBranch();
@@ -75,6 +77,19 @@ const Topbar = ({ onMenuClick }) => {
   const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isPartnerOrManager = currentUser?.role === 'PARTNER' || currentUser?.role === 'BRANCH_MANAGER';
+
+  const { data: business } = useQuery({
+    queryKey: ['business-profile'],
+    queryFn: businessApi.getProfile,
+    enabled: isPartnerOrManager,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const displayName = business?.name || currentUser?.fullName || 'Admin User';
+  const rawLogoUrl = business?.logoUrl;
+  const logoUrl = rawLogoUrl
+    ? rawLogoUrl.startsWith('http') ? rawLogoUrl : `${API_BASE_URL}${rawLogoUrl}`
+    : null;
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -149,17 +164,17 @@ const Topbar = ({ onMenuClick }) => {
             className="flex items-center gap-3 rounded-2xl border-l border-border pl-3 transition-colors"
           >
             <div className="text-right hidden sm:block">
-              <div className="text-[13px] font-semibold text-gray-900 leading-tight">{currentUser?.fullName || 'Admin User'}</div>
+              <div className="text-[13px] font-semibold text-gray-900 leading-tight">{displayName}</div>
               <div className="text-[11px] text-gray-400 font-medium">{currentUser?.role || 'Owner'}</div>
             </div>
-            <Avatar name={currentUser?.fullName || 'Admin User'} size="sm" />
+            <Avatar name={displayName} src={logoUrl} size="sm" />
             <ChevronDown size={14} className={`text-gray-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isMenuOpen ? (
             <div className="absolute right-0 top-[calc(100%+12px)] w-64 rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
               <div className="rounded-[20px] bg-slate-50 px-4 py-4">
-                <div className="text-sm font-semibold text-slate-900">{currentUser?.fullName || 'Admin User'}</div>
+                <div className="text-sm font-semibold text-slate-900">{displayName}</div>
                 <div className="mt-1 text-sm text-slate-500">{currentUser?.email || currentUser?.phone || 'owner@fitryx.com'}</div>
                 {currentUser?.role === 'BRANCH_MANAGER' && selectedBranch && (
                   <div className="mt-2 text-xs text-slate-500">
