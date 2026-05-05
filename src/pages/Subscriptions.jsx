@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import {
-  ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   FileText,
   MoreHorizontal,
   Pause,
+  Pencil,
   Phone,
   Plus,
   RefreshCw,
   Search,
+  Trash2,
   X,
   Users,
   Calendar,
@@ -25,10 +28,11 @@ import { subscriptionApi, memberApi, planApi } from '../services/planApi';
 
 // ── Constants ──────────────────────────────────────────────────
 const STATUS_CFG = {
-  ACTIVE:    { label: 'Active',    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  EXPIRED:   { label: 'Expired',   cls: 'bg-slate-100 text-slate-500 border-slate-200' },
-  CANCELLED: { label: 'Cancelled', cls: 'bg-rose-50 text-rose-600 border-rose-200' },
-  PAUSED:    { label: 'Paused',    cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  ACTIVE:        { label: 'Active',        cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  EXPIRING_SOON: { label: 'Expiring Soon', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  EXPIRED:       { label: 'Expired',       cls: 'bg-slate-100 text-slate-500 border-slate-200' },
+  CANCELLED:     { label: 'Cancelled',     cls: 'bg-rose-50 text-rose-600 border-rose-200' },
+  PAUSED:        { label: 'Paused',        cls: 'bg-violet-50 text-violet-700 border-violet-200' },
 };
 
 const PAYMENT_METHODS = ['cash', 'upi', 'card', 'bank_transfer', 'other'];
@@ -175,7 +179,7 @@ const AddSubscriptionModal = ({ isOpen, onClose, onSaved }) => {
               <input
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search member by name or phone..."
+                placeholder="Search by name, phone or member ID..."
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-sm outline-none focus:border-primary focus:bg-white"
               />
             </div>
@@ -416,8 +420,149 @@ const RenewModal = ({ isOpen, onClose, subscription, onSaved }) => {
   );
 };
 
+// ── Edit Subscription Modal ────────────────────────────────────
+const EditSubscriptionModal = ({ isOpen, onClose, subscription, onSaved }) => {
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
+
+  const { data: plansData = [] } = useQuery({
+    queryKey: ['plans'],
+    queryFn: planApi.list,
+    enabled: isOpen,
+  });
+  const activePlans = Array.isArray(plansData) ? plansData.filter((p) => p.isActive) : [];
+
+  React.useEffect(() => {
+    if (isOpen && subscription) {
+      setForm({
+        planId: subscription.planId ?? '',
+        startDate: subscription.startDate ? subscription.startDate.split('T')[0] : '',
+        endDate: subscription.endDate ? subscription.endDate.split('T')[0] : '',
+        amountPaid: subscription.amountPaid ?? '',
+        discountAmount: subscription.discountAmount ?? '',
+        paymentMethod: subscription.paymentMethod ?? 'cash',
+        paymentStatus: subscription.paymentStatus ?? 'PAID',
+        remainingAmount: subscription.remainingAmount ?? '',
+        nextPaymentDate: subscription.nextPaymentDate ? subscription.nextPaymentDate.split('T')[0] : '',
+        status: subscription.status ?? 'ACTIVE',
+      });
+      setErrors({});
+    }
+  }, [isOpen, subscription]);
+
+  const set = (f, v) => setForm((prev) => ({ ...prev, [f]: v }));
+  const isPartial = form.paymentStatus !== 'PAID';
+
+  const SUB_STATUSES = ['ACTIVE', 'EXPIRED', 'CANCELLED', 'PAUSED'];
+
+  const mutation = useMutation({
+    mutationFn: (payload) => subscriptionApi.update(subscription.id, payload),
+    onSuccess: () => {
+      toast.success('Subscription updated.');
+      onSaved?.();
+      onClose();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Subscription" width="640px"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
+            <CheckCircle2 size={15} />
+            {mutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {/* Member info (read-only) */}
+        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <span className="font-semibold text-slate-800">{subscription?.member?.fullName}</span>
+          {subscription?.member?.phone && <span className="ml-3 text-slate-400">{subscription.member.phone}</span>}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <FormField label="Plan">
+              <select value={form.planId} onChange={(e) => set('planId', e.target.value)} className={inputCls(false)}>
+                {activePlans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — ₹{p.price} / {p.duration}d</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+
+          <FormField label="Start Date">
+            <input type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} className={inputCls(false)} />
+          </FormField>
+          <FormField label="End Date">
+            <input type="date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} className={inputCls(false)} />
+          </FormField>
+
+          <FormField label="Amount Paid (₹)">
+            <input type="number" min="0" value={form.amountPaid} onChange={(e) => set('amountPaid', e.target.value)} className={inputCls(false)} />
+          </FormField>
+          <FormField label="Discount (₹)">
+            <input type="number" min="0" value={form.discountAmount} onChange={(e) => set('discountAmount', e.target.value)} className={inputCls(false)} />
+          </FormField>
+
+          <FormField label="Payment Method">
+            <select value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls(false)}>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1).replace('_', ' ')}</option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Subscription Status">
+            <select value={form.status} onChange={(e) => set('status', e.target.value)} className={inputCls(false)}>
+              {SUB_STATUSES.map((s) => (
+                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+              ))}
+            </select>
+          </FormField>
+        </div>
+
+        <FormField label="Payment Status">
+          <div className="flex gap-2">
+            {PAYMENT_STATUSES.map((ps) => (
+              <button key={ps.value} type="button" onClick={() => set('paymentStatus', ps.value)}
+                className={`flex-1 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                  form.paymentStatus === ps.value
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-primary/40'
+                }`}>
+                {ps.label}
+              </button>
+            ))}
+          </div>
+        </FormField>
+
+        {isPartial && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+            <div className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+              <Calendar size={13} /> Installment Details
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <FormField label="Remaining Amount (₹)">
+                <input type="number" min="0" value={form.remainingAmount} onChange={(e) => set('remainingAmount', e.target.value)} placeholder="e.g. 1000" className={inputCls(false)} />
+              </FormField>
+              <FormField label="Next Payment Date">
+                <input type="date" value={form.nextPaymentDate} onChange={(e) => set('nextPaymentDate', e.target.value)} className={inputCls(false)} />
+              </FormField>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
 // ── Row action menu ────────────────────────────────────────────
-const RowMenu = ({ sub, onRenew, onCancel, onPause, onInvoice }) => {
+const RowMenu = ({ sub, onEdit, onRenew, onCancel, onPause, onDelete, onInvoice }) => {
   const [open, setOpen] = useState(false);
   const canAct = sub.status === 'ACTIVE' || sub.status === 'PAUSED';
 
@@ -433,6 +578,10 @@ const RowMenu = ({ sub, onRenew, onCancel, onPause, onInvoice }) => {
           <button onClick={() => { setOpen(false); onInvoice(sub); }}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
             <FileText size={13} /> View Invoice
+          </button>
+          <button onClick={() => { setOpen(false); onEdit(sub); }}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+            <Pencil size={13} /> Edit
           </button>
           <button onClick={() => { setOpen(false); onRenew(sub); }}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
@@ -450,6 +599,11 @@ const RowMenu = ({ sub, onRenew, onCancel, onPause, onInvoice }) => {
               <X size={13} /> Cancel
             </button>
           )}
+          <div className="my-1 border-t border-slate-100" />
+          <button onClick={() => { setOpen(false); onDelete(sub); }}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50">
+            <Trash2 size={13} /> Delete
+          </button>
         </div>
       )}
     </div>
@@ -458,20 +612,84 @@ const RowMenu = ({ sub, onRenew, onCancel, onPause, onInvoice }) => {
 
 // ── Tab config ─────────────────────────────────────────────────
 const TABS = [
-  { key: 'ALL',       label: 'All' },
-  { key: 'ACTIVE',    label: 'Active' },
-  { key: 'EXPIRED',   label: 'Expired' },
-  { key: 'PAUSED',    label: 'Paused' },
-  { key: 'CANCELLED', label: 'Cancelled' },
+  { key: 'ALL',           label: 'All' },
+  { key: 'ACTIVE',        label: 'Active' },
+  { key: 'EXPIRING_SOON', label: 'Expiring Soon' },
+  { key: 'EXPIRED',       label: 'Expired' },
+  { key: 'PAUSED',        label: 'Paused' },
+  { key: 'CANCELLED',     label: 'Cancelled' },
 ];
+
+// ── Pagination ─────────────────────────────────────────────────
+const Pagination = ({ page, totalPages, total, limit, onPageChange }) => {
+  const [goTo, setGoTo] = useState('');
+  const start = Math.min((page - 1) * limit + 1, total);
+  const end   = Math.min(page * limit, total);
+
+  const pages = (() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const list = [1];
+    if (page > 3) list.push('…');
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) list.push(i);
+    if (page < totalPages - 2) list.push('…');
+    if (totalPages > 1) list.push(totalPages);
+    return list;
+  })();
+
+  const handleGoTo = (e) => {
+    e.preventDefault();
+    const p = parseInt(goTo, 10);
+    if (p >= 1 && p <= totalPages) { onPageChange(p); setGoTo(''); }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+      <span className="text-[13px] text-slate-500">
+        Showing <strong className="text-slate-800">{start}–{end}</strong> of{' '}
+        <strong className="text-slate-800">{total}</strong> subscriptions
+      </span>
+      <div className="flex items-center gap-1.5">
+        <button disabled={page === 1} onClick={() => onPageChange(page - 1)}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">
+          <ChevronLeft size={14} />
+        </button>
+        {pages.map((p, i) =>
+          p === '…' ? (
+            <span key={`e${i}`} className="flex h-8 w-8 items-center justify-center text-[13px] text-slate-400">…</span>
+          ) : (
+            <button key={p} onClick={() => onPageChange(p)}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl border text-[13px] font-semibold transition ${
+                p === page ? 'border-primary bg-primary text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-primary hover:text-primary'
+              }`}>
+              {p}
+            </button>
+          )
+        )}
+        <button disabled={page === totalPages} onClick={() => onPageChange(page + 1)}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">
+          <ChevronRight size={14} />
+        </button>
+        {totalPages > 3 && (
+          <form onSubmit={handleGoTo} className="ml-2 flex items-center gap-1.5">
+            <span className="text-[12px] text-slate-400">Go to</span>
+            <input value={goTo} onChange={(e) => setGoTo(e.target.value)}
+              className="h-8 w-12 rounded-xl border border-slate-200 bg-white px-2 text-center text-[13px] font-semibold outline-none focus:border-primary"
+              placeholder="—" />
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ── Main page ──────────────────────────────────────────────────
 const Subscriptions = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeTab, setActiveTab] = useState('ACTIVE');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
+  const [editSub, setEditSub] = useState(null);
   const [renewSub, setRenewSub] = useState(null);
   const [invoiceSub, setInvoiceSub] = useState(null);
 
@@ -504,23 +722,26 @@ const Subscriptions = () => {
     return statsData[key] ?? 0;
   };
 
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
+  };
+
   const cancelMutation = useMutation({
     mutationFn: (id) => subscriptionApi.cancel(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
-      toast.success('Subscription cancelled.');
-    },
+    onSuccess: () => { invalidate(); toast.success('Subscription cancelled.'); },
     onError: (err) => toast.error(err.message),
   });
 
   const pauseMutation = useMutation({
     mutationFn: (id) => subscriptionApi.pause(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
-      toast.success('Subscription paused.');
-    },
+    onSuccess: () => { invalidate(); toast.success('Subscription paused.'); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => subscriptionApi.delete(id),
+    onSuccess: () => { invalidate(); toast.success('Subscription deleted.'); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -530,25 +751,30 @@ const Subscriptions = () => {
     }
   };
 
+  const handleDelete = (sub) => {
+    if (window.confirm(`Permanently delete this subscription for "${sub.member?.fullName}"? This cannot be undone.`)) {
+      deleteMutation.mutate(sub.id);
+    }
+  };
+
   return (
     <div className="max-w-[1200px] mx-auto pb-12 space-y-8">
       <AddSubscriptionModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
-        onSaved={() => {
-          queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-          queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
-        }}
+        onSaved={() => invalidate()}
+      />
+      <EditSubscriptionModal
+        isOpen={Boolean(editSub)}
+        subscription={editSub}
+        onClose={() => setEditSub(null)}
+        onSaved={() => { invalidate(); setEditSub(null); }}
       />
       <RenewModal
         isOpen={Boolean(renewSub)}
         subscription={renewSub}
         onClose={() => setRenewSub(null)}
-        onSaved={() => {
-          queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-          queryClient.invalidateQueries({ queryKey: ['subscription-stats'] });
-          setRenewSub(null);
-        }}
+        onSaved={() => { invalidate(); setRenewSub(null); }}
       />
       <InvoiceModal
         isOpen={Boolean(invoiceSub)}
@@ -573,7 +799,7 @@ const Subscriptions = () => {
       </div>
 
       {/* Tab stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {TABS.map((tab) => {
           const count = getTabCount(tab.key);
           return (
@@ -628,8 +854,16 @@ const Subscriptions = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((sub) => (
-                  <tr key={sub.id} className="transition-colors hover:bg-slate-50/70">
+                {filtered.map((sub) => {
+                  const now = Date.now();
+                  const sevenDays = 7 * 86400000;
+                  const msLeft = sub.endDate ? new Date(sub.endDate).getTime() - now : Infinity;
+                  const effectiveStatus =
+                    sub.status === 'ACTIVE' && msLeft >= 0 && msLeft <= sevenDays
+                      ? 'EXPIRING_SOON'
+                      : sub.status;
+                  return (
+                  <tr key={sub.id} className={`transition-colors hover:bg-slate-50/70 ${effectiveStatus === 'EXPIRING_SOON' ? 'bg-amber-50/40' : ''}`}>
                     {/* Member */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -714,45 +948,35 @@ const Subscriptions = () => {
 
                     {/* Status */}
                     <td className="px-5 py-4">
-                      <StatusBadge status={sub.status} />
+                      <StatusBadge status={effectiveStatus} />
                     </td>
 
                     {/* Actions */}
                     <td className="px-4 py-4">
                       <RowMenu
                         sub={sub}
+                        onEdit={setEditSub}
                         onRenew={setRenewSub}
                         onCancel={handleCancel}
                         onPause={(s) => pauseMutation.mutate(s.id)}
+                        onDelete={handleDelete}
                         onInvoice={setInvoiceSub}
                       />
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-sm text-slate-500">
-            <span>
-              Showing <strong className="text-slate-800">{filtered.length}</strong> of{' '}
-              <strong className="text-slate-800">{meta.total}</strong> subscriptions
-            </span>
-            {meta.totalPages > 1 && (
-              <div className="flex items-center gap-2">
-                <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}
-                  className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold disabled:opacity-40 hover:bg-white">
-                  Prev
-                </button>
-                <span className="text-xs font-semibold">{page} / {meta.totalPages}</span>
-                <button disabled={page === meta.totalPages} onClick={() => setPage((p) => p + 1)}
-                  className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold disabled:opacity-40 hover:bg-white">
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
+          <Pagination
+            page={page}
+            totalPages={meta.totalPages}
+            total={meta.total}
+            limit={20}
+            onPageChange={setPage}
+          />
         </div>
       )}
     </div>

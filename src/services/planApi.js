@@ -100,6 +100,10 @@ export const subscriptionApi = {
 
   create: (data) => request('/partner/subscriptions', { method: 'POST', body: data }),
 
+  update: (id, data) => request(`/partner/subscriptions/${id}`, { method: 'PATCH', body: data }),
+
+  delete: (id) => request(`/partner/subscriptions/${id}`, { method: 'DELETE' }),
+
   renew: (id, data) => request(`/partner/subscriptions/${id}/renew`, { method: 'PATCH', body: data }),
 
   cancel: (id) => request(`/partner/subscriptions/${id}/cancel`, { method: 'PATCH' }),

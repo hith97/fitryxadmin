@@ -443,7 +443,7 @@ function QuickCheckinModal({ isOpen, onClose, onSuccess }) {
                   ref={inputRef}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search members by name…"
+                  placeholder="Search by name, phone or member ID…"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-teal-400 focus:bg-white"
                 />
               </div>
@@ -668,7 +668,7 @@ export default function Attendance() {
           <input
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by member name…"
+            placeholder="Search by name, phone or member ID…"
             className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm shadow-sm outline-none focus:border-teal-400"
           />
         </div>

@@ -118,7 +118,7 @@ const EnrollModal = ({ ptPlans, trainers, onClose }) => {
                 <>
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input value={memberQuery} onChange={(e) => searchMembers(e.target.value)} placeholder="Search member..." className={`${inputCls} pl-8`} />
+                    <input value={memberQuery} onChange={(e) => searchMembers(e.target.value)} placeholder="Search by name, phone or ID..." className={`${inputCls} pl-8`} />
                   </div>
                   {(memberResults.length > 0 || searching) && (
                     <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto">

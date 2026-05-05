@@ -519,7 +519,7 @@ const OrderModal = ({ isOpen, onClose, onSaved }) => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                 <input value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)}
-                  placeholder="Search member..." className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm outline-none focus:border-primary focus:bg-white" />
+                  placeholder="Search by name, phone or ID..." className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm outline-none focus:border-primary focus:bg-white" />
               </div>
               {members.length > 0 && (
                 <div className="max-h-32 overflow-y-auto rounded-2xl border border-slate-200 bg-white">

@@ -234,7 +234,7 @@ const ProfileSettings = () => {
       >
         {editing === 'basic' ? (
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Gym Name">
+            <Field label="Business Name">
               <input value={form.name} onChange={(e) => setField('name', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Founded Year">
@@ -263,7 +263,7 @@ const ProfileSettings = () => {
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
-            <InfoRow label="Gym Name"       value={profile?.name} />
+            <InfoRow label="Business Name"  value={profile?.name} />
             <InfoRow label="Founded Year"   value={profile?.foundedYear} />
             <InfoRow label="Phone"          value={profile?.phone || profile?.partner?.phone} />
             <InfoRow label="Email"          value={profile?.email || profile?.partner?.email} />

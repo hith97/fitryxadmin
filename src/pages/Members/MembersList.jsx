@@ -191,8 +191,13 @@ const MembersList = () => {
   useEffect(() => setSelected(new Set()), [page, search, activeTab]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['members', { search, page }],
-    queryFn: () => memberApi.list({ search: search || undefined, page, limit: 20 }),
+    queryKey: ['members', { search, activeTab, page }],
+    queryFn: () => memberApi.list({
+      search: search || undefined,
+      status: activeTab === 'ALL' ? undefined : activeTab,
+      page,
+      limit: 20,
+    }),
     keepPreviousData: true,
   });
 
@@ -200,7 +205,8 @@ const MembersList = () => {
   const meta    = data?.meta ?? { total: 0, totalPages: 1 };
   const statusCounts = data?.statusCounts ?? { ALL: 0, ACTIVE: 0, EXPIRING_SOON: 0, INACTIVE: 0 };
 
-  const filtered = activeTab === 'ALL' ? members : members.filter((m) => m.status === activeTab);
+  // Already filtered server-side
+  const filtered = members;
 
   // ── Selection helpers ──────────────────────────────────────────
   const pageIds   = filtered.map((m) => m.id);
@@ -305,7 +311,7 @@ const MembersList = () => {
           <input
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by name, phone or email..."
+            placeholder="Search by name, phone, email or member ID..."
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary focus:bg-white"
           />
         </div>
