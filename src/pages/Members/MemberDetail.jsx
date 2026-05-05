@@ -4,11 +4,11 @@ import {
   ArrowLeft,
   Calendar,
   CreditCard,
+  Hash,
   Mail,
   MapPin,
   Pencil,
   Phone,
-  Ruler,
   Scale,
   User2,
   Users,
@@ -22,6 +22,14 @@ import { memberApi } from '../../services/planApi';
 
 // ── Helpers ────────────────────────────────────────────────────
 const fmt = (d) => (d ? format(new Date(d), 'dd MMM yyyy') : '—');
+
+// Splits "RO1873" → { prefix: "RO", digits: "1873" }
+function parseMemberNumber(mn) {
+  if (!mn) return null;
+  const match = mn.match(/^([A-Za-z]*)(\d+)$/);
+  if (!match) return { prefix: '', digits: mn };
+  return { prefix: match[1], digits: match[2] };
+}
 
 const SUB_STATUS = {
   ACTIVE:    { label: 'Active',    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -100,6 +108,7 @@ const MemberDetail = () => {
 
   const activeSub = member.subscriptions?.find((s) => s.status === 'ACTIVE');
   const memStatus = MEM_STATUS[member.status] || MEM_STATUS.INACTIVE;
+  const parsedId = parseMemberNumber(member.memberNumber);
 
   return (
     <div className="max-w-full mx-auto pb-12 space-y-6">
@@ -226,6 +235,14 @@ const MemberDetail = () => {
               </div>
             </div>
             <div className="mt-5 space-y-2 text-sm text-white/90">
+              {parsedId && (
+                <div className="flex justify-between">
+                  <span>Member ID</span>
+                  <span className="font-bold tracking-wider">
+                    {parsedId.prefix}{parsedId.digits}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Status</span>
                 <span className="font-semibold">{memStatus.label}</span>

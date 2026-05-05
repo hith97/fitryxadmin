@@ -64,6 +64,25 @@ const downloadTemplate = () => {
   XLSX.writeFile(wb, 'fitryx_members_import_template.xlsx');
 };
 
+// ── Date normaliser ───────────────────────────────────────────────
+// Excel returns date cells as JS Date objects when cellDates:true is set.
+// Convert them to YYYY-MM-DD strings so the backend parseDate() handles them.
+const toDateStr = (d) => {
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const sanitizeRows = (rows) =>
+  rows.map((row) => {
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+      out[k] = v instanceof Date ? toDateStr(v) : v;
+    }
+    return out;
+  });
+
 // ── File parser ───────────────────────────────────────────────────
 const parseFile = (file) =>
   new Promise((resolve, reject) => {
@@ -79,10 +98,10 @@ const parseFile = (file) =>
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-          resolve(rows);
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: '', cellDates: true });
+          resolve(sanitizeRows(rows));
         } catch (err) {
           reject(err);
         }
@@ -135,6 +154,7 @@ const ImportData = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewTab, setPreviewTab] = useState('all');
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ batch: 0, total: 0, imported: 0 });
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState(null);
   const fileRef = useRef();
@@ -184,12 +204,32 @@ const ImportData = () => {
     }
   };
 
+  const CHUNK_SIZE = 50;
+
   const handleImport = async () => {
     setImporting(true);
     setImportError(null);
+
+    const validRows = previewData.valid.map((item) => item.data);
+    const chunks = [];
+    for (let i = 0; i < validRows.length; i += CHUNK_SIZE) {
+      chunks.push(validRows.slice(i, i + CHUNK_SIZE));
+    }
+
+    setImportProgress({ batch: 0, total: chunks.length, imported: 0 });
+
+    let totalImported = 0;
+    const allSkipped = [];
+
     try {
-      const result = await memberApi.importConfirm(parsedRows);
-      setImportResult(result);
+      for (let i = 0; i < chunks.length; i++) {
+        setImportProgress({ batch: i + 1, total: chunks.length, imported: totalImported });
+        const result = await memberApi.importConfirm(chunks[i]);
+        totalImported += result.imported ?? 0;
+        if (result.skipped?.length) allSkipped.push(...result.skipped);
+      }
+
+      setImportResult({ imported: totalImported, skipped: allSkipped });
       setStep(4);
     } catch (err) {
       setImportError(err.message || 'Import failed');
@@ -539,8 +579,23 @@ const ImportData = () => {
             </div>
           )}
 
+          {importing && (
+            <div className="mb-4 rounded-xl border border-primary/20 bg-blue-50 p-4">
+              <div className="mb-2 flex items-center justify-between text-[13px] font-medium text-primary">
+                <span>Importing batch {importProgress.batch} of {importProgress.total}…</span>
+                <span>{importProgress.imported} imported so far</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-primary/20">
+                <div
+                  className="h-2 rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${importProgress.total ? (importProgress.batch / importProgress.total) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
-            <Button variant="secondary" onClick={() => { reset(); setStep(2); }} className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => { reset(); setStep(2); }} className="flex items-center gap-2" disabled={importing}>
               <ArrowLeft size={16} />
               Re-upload
             </Button>
@@ -549,7 +604,7 @@ const ImportData = () => {
               disabled={previewData.summary.valid === 0 || importing}
               className="flex items-center gap-2"
             >
-              {importing ? 'Importing…' : `Import ${previewData.summary.valid} Row${previewData.summary.valid !== 1 ? 's' : ''}`}
+              {importing ? `Batch ${importProgress.batch}/${importProgress.total}…` : `Import ${previewData.summary.valid} Row${previewData.summary.valid !== 1 ? 's' : ''}`}
               {!importing && <ArrowRight size={16} />}
             </Button>
           </div>
@@ -568,10 +623,19 @@ const ImportData = () => {
               <span className="font-semibold text-gray-800">{importResult.imported}</span> member
               {importResult.imported !== 1 ? 's were' : ' was'} successfully imported.
             </p>
-            {previewData?.summary?.errors > 0 && (
+            {(previewData?.summary?.errors > 0 || importResult.skipped?.length > 0) && (
               <p className="text-[13px] text-amber-600 mt-2">
-                {previewData.summary.errors} row{previewData.summary.errors !== 1 ? 's were' : ' was'} skipped due to errors.
+                {(previewData?.summary?.errors ?? 0) + (importResult.skipped?.length ?? 0)} row
+                {((previewData?.summary?.errors ?? 0) + (importResult.skipped?.length ?? 0)) !== 1 ? 's were' : ' was'} skipped.
               </p>
+            )}
+            {importResult.skipped?.length > 0 && (
+              <div className="mt-4 w-full max-h-40 overflow-y-auto rounded-xl border border-amber-100 bg-amber-50 p-3 text-left">
+                <p className="mb-2 text-[11px] font-bold uppercase text-amber-600">Skipped during import</p>
+                {importResult.skipped.map((s, i) => (
+                  <div key={i} className="text-[12px] text-amber-800">Row {s.row}: {s.reason}</div>
+                ))}
+              </div>
             )}
           </div>
 
