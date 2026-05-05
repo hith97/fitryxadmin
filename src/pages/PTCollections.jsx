@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dumbbell, UserPlus, X, Users, ChevronDown, Search, ArrowRight, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -246,6 +246,8 @@ const EnrollModal = ({ ptPlans, trainers, onClose }) => {
 const TrainerDropdown = ({ subId, currentTrainerId, trainers }) => {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState({});
+  const buttonRef = useRef(null);
 
   const assign = async (trainerId) => {
     setOpen(false);
@@ -259,22 +261,55 @@ const TrainerDropdown = ({ subId, currentTrainerId, trainers }) => {
 
   const current = trainers.find((t) => t.id === currentTrainerId);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const positionMenu = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const width = 224;
+      const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
+      const top = Math.min(rect.bottom + 6, window.innerHeight - 260);
+      setMenuStyle({ left, top, width });
+    };
+
+    positionMenu();
+    window.addEventListener('resize', positionMenu);
+    window.addEventListener('scroll', positionMenu, true);
+
+    return () => {
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
-      <button onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium hover:bg-gray-50">
+    <div className="relative inline-flex">
+      <button
+        ref={buttonRef}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex min-w-[140px] items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-primary/40 hover:bg-slate-50"
+      >
         {current ? current.name : 'Assign trainer'}
         <ChevronDown size={12} />
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-            <button onClick={() => assign(null)} className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-gray-50">No trainer</button>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-50 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+            style={menuStyle}
+          >
+            <button onClick={() => assign(null)} className="w-full px-3 py-2 text-left text-xs font-medium text-slate-500 hover:bg-slate-50">No trainer</button>
+            {trainers.length === 0 && (
+              <div className="px-3 py-2 text-xs text-slate-400">No active trainers found</div>
+            )}
             {trainers.map((t) => (
               <button key={t.id} onClick={() => assign(t.id)}
-                className={`w-full text-left px-3 py-2 text-xs hover:bg-primary/5 ${t.id === currentTrainerId ? 'font-semibold text-primary' : 'text-gray-700'}`}>
-                {t.name} <span className="text-gray-400">({t.role})</span>
+                className={`w-full px-3 py-2 text-left text-xs hover:bg-primary/5 ${t.id === currentTrainerId ? 'font-semibold text-primary' : 'text-slate-700'}`}>
+                <span className="block truncate">{t.name}</span>
+                {t.role && <span className="block truncate text-[11px] font-normal text-slate-400">{t.role}</span>}
               </button>
             ))}
           </div>
@@ -397,61 +432,80 @@ export default function PTCollections() {
           )}
         </div>
       ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Member</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">PT Package</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Trainer</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Period</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Sessions</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Status</th>
-                <th className="px-4 py-3" />
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] table-fixed text-sm">
+              <colgroup>
+              <col className="w-[22%]" />
+              <col className="w-[22%]" />
+              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[3%]" />
+              </colgroup>
+              <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/80">
+                <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">Member</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">PT Package</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">Assignee</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">Period</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sessions</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
+                <th className="px-4 py-3.5" />
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+              </thead>
+              <tbody className="divide-y divide-slate-100">
               {filteredEnrollments.map((e) => {
-                const start = new Date(e.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-                const end = new Date(e.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+                const start = e.startDate
+                  ? new Date(e.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
+                  : '-';
+                const end = e.endDate
+                  ? new Date(e.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
+                  : '-';
                 return (
-                  <tr key={e.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Avatar name={e.member?.fullName} photo={e.member?.photoUrl} size={8} />
-                        <div>
-                          <div className="font-medium text-gray-900">{e.member?.fullName}</div>
-                          <div className="text-xs text-gray-400">{e.member?.phone}</div>
+                  <tr key={e.id} className="transition-colors hover:bg-slate-50/70">
+                    <td className="px-5 py-4 align-middle">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar name={e.member?.fullName} photo={e.member?.photoUrl} size={9} />
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-slate-900">{e.member?.fullName || 'Unknown member'}</div>
+                          <div className="truncate text-xs text-slate-400">{e.member?.phone || '-'}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{e.plan?.name}</div>
-                      {e.amountPaid && <div className="text-xs text-gray-400">{fmt(e.amountPaid)}</div>}
+                    <td className="px-5 py-4 align-middle">
+                      <div className="truncate font-semibold text-slate-900">{e.plan?.name || '-'}</div>
+                      {e.amountPaid != null && <div className="mt-0.5 text-xs text-slate-400">{fmt(e.amountPaid)}</div>}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4 align-middle">
                       <TrainerDropdown subId={e.id} currentTrainerId={e.trainerId} trainers={trainers} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{start} – {end}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">
-                      {e.plan?.sessions ? `${e.sessionsUsed ?? 0} / ${e.plan.sessions}` : '—'}
+                    <td className="px-5 py-4 align-middle text-xs font-medium text-slate-500">{start} - {end}</td>
+                    <td className="px-5 py-4 align-middle text-xs font-semibold text-slate-600">
+                      {e.plan?.sessions ? `${e.sessionsUsed ?? 0} / ${e.plan.sessions}` : '-'}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusColor[e.status] || statusColor.EXPIRED}`}>
+                    <td className="px-5 py-4 align-middle">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusColor[e.status] || statusColor.EXPIRED}`}>
                         {e.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4 align-middle text-right">
                       <button onClick={() => { if (confirm('Cancel this PT enrollment?')) cancelEnrollment.mutate(e.id); }}
-                        className="text-gray-300 hover:text-red-500 transition-colors">
+                        className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                        aria-label="Cancel PT enrollment">
                         <X size={14} />
                       </button>
                     </td>
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-sm text-slate-500">
+            Showing <strong className="text-slate-800">{filteredEnrollments.length}</strong> PT enrollment{filteredEnrollments.length === 1 ? '' : 's'}
+          </div>
         </div>
       )}
 

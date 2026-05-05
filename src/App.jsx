@@ -44,6 +44,8 @@ import PTCollections from './pages/PTCollections';
 import Expenses from './pages/Expenses';
 import Products from './pages/Products';
 import Income from './pages/Income';
+import Attendance from './pages/Attendance';
+import Notifications from './pages/Notifications';
 
 const queryClient = new QueryClient();
 
@@ -155,11 +157,11 @@ const AppRoutes = () => {
           <Route path="income" element={<Income />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="products" element={<Products />} />
-          <Route path="attendance" element={<Placeholder title="Attendance" />} />
+          <Route path="attendance" element={<Attendance />} />
           <Route path="classes" element={<Classes />} />
           <Route path="libraries" element={<Placeholder title="Libraries" />} />
           <Route path="reports" element={<Placeholder title="Reports" />} />
-          <Route path="notifications" element={<Placeholder title="Push Notifications" />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Navigate to="/settings/profile" replace />} />
           <Route element={<SettingsLayout />}>
             <Route path="settings/profile"          element={<ProfileSettings />} />

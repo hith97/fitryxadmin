@@ -181,6 +181,20 @@ export const incomeApi = {
   summary: (query = {}) => request('/partner/income/summary', { query }),
 };
 
+// ── Attendance ───────────────────────────────────────────────────
+export const attendanceApi = {
+  list: (query = {}) => request('/partner/attendance', { query }),
+
+  manualCheckin: (data) =>
+    request('/partner/attendance/manual-checkin', { method: 'POST', body: data }),
+
+  checkout: (id) =>
+    request(`/partner/attendance/${id}/checkout`, { method: 'PATCH' }),
+
+  autoCheckout: (thresholdHours = 8) =>
+    request('/partner/attendance/auto-checkout', { method: 'POST', body: { thresholdHours } }),
+};
+
 // ── Staff ────────────────────────────────────────────────────────
 export const staffApi = {
   list: () => request('/partner/staff'),
@@ -193,4 +207,32 @@ export const staffApi = {
     request(`/partner/staff/${id}/status`, { method: 'PATCH', body: { status } }),
 
   remove: (id) => request(`/partner/staff/${id}`, { method: 'DELETE' }),
+};
+
+// ── Dashboard ─────────────────────────────────────────────────────
+export const dashboardApi = {
+  snapshot: () => request('/partner/dashboard/snapshot'),
+
+  stats: (from, to) => request('/partner/dashboard/stats', { query: { from, to } }),
+
+  revenueChart: (from, to) => request('/partner/dashboard/revenue-chart', { query: { from, to } }),
+
+  peakHours: (from, to) => request('/partner/dashboard/peak-hours', { query: { from, to } }),
+
+  membershipDistribution: () => request('/partner/dashboard/membership-distribution'),
+
+  attendanceChart: (from, to) => request('/partner/dashboard/attendance-chart', { query: { from, to } }),
+
+  needsAttention: () => request('/partner/dashboard/needs-attention'),
+};
+
+// ── Notifications ─────────────────────────────────────────────────
+export const notificationsApi = {
+  list: (query = {}) => request('/notifications', { query }),
+
+  unreadCount: () => request('/notifications/unread-count'),
+
+  markRead: (id) => request(`/notifications/${id}/read`, { method: 'PATCH' }),
+
+  markAllRead: () => request('/notifications/read-all', { method: 'PATCH' }),
 };

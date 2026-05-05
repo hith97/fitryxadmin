@@ -102,7 +102,7 @@ const MemberDetail = () => {
   const memStatus = MEM_STATUS[member.status] || MEM_STATUS.INACTIVE;
 
   return (
-    <div className="max-w-[1200px] mx-auto pb-12 space-y-6">
+    <div className="max-w-full mx-auto pb-12 space-y-6">
       <AddMemberModal
         isOpen={editOpen}
         editMember={member}
