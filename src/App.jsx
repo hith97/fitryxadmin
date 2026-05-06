@@ -38,6 +38,8 @@ import AdminMembers from './pages/Admin/AdminMembers';
 import AdminBookings from './pages/Admin/AdminBookings';
 import AdminLeads from './pages/Admin/AdminLeads';
 import AdminPackages from './pages/Admin/AdminPackages';
+import Banners from './pages/Admin/Banners';
+import AppContent from './pages/Admin/AppContent';
 import BranchesList from './pages/Branches/BranchesList';
 import BranchDetail from './pages/Branches/BranchDetail';
 import PTCollections from './pages/PTCollections';
@@ -73,6 +75,14 @@ const HomeRedirect = () => {
   }
 
   return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+};
+
+const SuperAdminRoute = () => {
+  const { currentUser } = useAuth();
+  if (currentUser?.role !== 'SUPER_ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Outlet />;
 };
 
 const ProtectedRoute = () => {
@@ -136,12 +146,18 @@ const AppRoutes = () => {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="dashboard" element={<DashboardRoute />} />
-          <Route path="admin/partners" element={<Partners />} />
-          <Route path="admin/partners/:id" element={<PartnerDetail />} />
-          <Route path="admin/members" element={<AdminMembers />} />
-          <Route path="admin/bookings" element={<AdminBookings />} />
-          <Route path="admin/leads" element={<AdminLeads />} />
-          <Route path="admin/packages" element={<AdminPackages />} />
+
+          {/* ── Super Admin only ── */}
+          <Route element={<SuperAdminRoute />}>
+            <Route path="admin/partners" element={<Partners />} />
+            <Route path="admin/partners/:id" element={<PartnerDetail />} />
+            <Route path="admin/members" element={<AdminMembers />} />
+            <Route path="admin/bookings" element={<AdminBookings />} />
+            <Route path="admin/leads" element={<AdminLeads />} />
+            <Route path="admin/packages" element={<AdminPackages />} />
+            <Route path="admin/banners" element={<Banners />} />
+            <Route path="admin/app-content" element={<AppContent />} />
+          </Route>
           <Route path="branches" element={<BranchesList />} />
           <Route path="branches/:id" element={<BranchDetail />} />
           <Route path="members" element={<MembersList />} />

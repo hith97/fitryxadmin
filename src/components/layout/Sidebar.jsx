@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, ShieldCheck, Package, Target,
   CalendarCheck, Settings, X, Download, BookOpen,
   UserCheck, Dumbbell, ClipboardList, Tag, RefreshCw,
-  TrendingUp, Receipt, ShoppingCart, BookMarked, BarChart2, Bell, Building2,
+  TrendingUp, Receipt, ShoppingCart, BookMarked, BarChart2, Bell, Building2, Image, Smartphone,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBranch } from '../../context/BranchContext';
@@ -43,6 +43,8 @@ const ADMIN_SECTIONS = [
     items: [
       { label: 'Business Approvals', path: '/admin/partners', icon: ShieldCheck },
       { label: 'Packages', path: '/admin/packages', icon: Package },
+      { label: 'Banners', path: '/admin/banners', icon: Image },
+      { label: 'App Content', path: '/admin/app-content', icon: Smartphone },
     ],
   },
   {

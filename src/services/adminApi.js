@@ -60,4 +60,31 @@ export const adminApi = {
   getPackages: () => request('/admin/packages'),
   createPackage: (data) => request('/admin/packages', { method: 'POST', body: data }),
   updatePackage: (id, data) => request(`/admin/packages/${id}`, { method: 'PATCH', body: data }),
+
+  // Banners
+  listBanners: () => request('/admin/banners'),
+  createBanner: (data) => request('/admin/banners', { method: 'POST', body: data }),
+  updateBanner: (id, data) => request(`/admin/banners/${id}`, { method: 'PATCH', body: data }),
+  deleteBanner: (id) => request(`/admin/banners/${id}`, { method: 'DELETE' }),
+  uploadBannerImage: async (file) => {
+    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    const formData = new FormData();
+    formData.append('file', file);
+    const url = new URL(`${API_BASE_URL}/admin/upload`, window.location.origin);
+    const res = await fetch(url.toString(), {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Upload failed');
+    return data; // { url: '...' }
+  },
+
+  // App Config
+  getAppConfig: () => request('/admin/app-config'),
+  setAppConfig: (data) => request('/admin/app-config', { method: 'PUT', body: data }),
+
+  // Push Broadcast
+  broadcastPush: (title, body) => request('/admin/push/broadcast', { method: 'POST', body: { title, body } }),
 };

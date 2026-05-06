@@ -23,6 +23,15 @@ import { memberApi } from '../../services/planApi';
 // ── Helpers ────────────────────────────────────────────────────
 const fmt = (d) => (d ? format(new Date(d), 'dd MMM yyyy') : '—');
 
+// Strip country code prefix for display only
+const formatPhone = (p) => {
+  if (!p) return '—';
+  const s = p.replace(/[\s\-\(\)]/g, '');
+  if (s.startsWith('+91')) return s.slice(3);
+  if (s.startsWith('91') && s.length === 12) return s.slice(2);
+  return p;
+};
+
 // Splits "RO1873" → { prefix: "RO", digits: "1873" }
 function parseMemberNumber(mn) {
   if (!mn) return null;
@@ -158,7 +167,7 @@ const MemberDetail = () => {
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
                 {member.phone && (
                   <span className="flex items-center gap-1.5">
-                    <Phone size={14} className="text-slate-300" /> {member.phone}
+                    <Phone size={14} className="text-slate-300" /> {formatPhone(member.phone)}
                   </span>
                 )}
                 {member.email && (
@@ -204,7 +213,7 @@ const MemberDetail = () => {
 
           <Section title="Contact Information" icon={Phone}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <InfoRow label="Phone" value={member.phone} />
+              <InfoRow label="Phone" value={formatPhone(member.phone)} />
               <InfoRow label="Email" value={member.email} />
               <InfoRow label="Address" value={member.address} />
               <InfoRow label="City" value={member.city} />
