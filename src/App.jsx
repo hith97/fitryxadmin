@@ -40,6 +40,9 @@ import AdminLeads from './pages/Admin/AdminLeads';
 import AdminPackages from './pages/Admin/AdminPackages';
 import Banners from './pages/Admin/Banners';
 import AppContent from './pages/Admin/AppContent';
+import AdminFaqs from './pages/Admin/AdminFaqs';
+import AdminBlogs from './pages/Admin/AdminBlogs';
+import AdminGlobalProducts from './pages/Admin/AdminGlobalProducts';
 import BranchesList from './pages/Branches/BranchesList';
 import BranchDetail from './pages/Branches/BranchDetail';
 import PTCollections from './pages/PTCollections';
@@ -157,6 +160,9 @@ const AppRoutes = () => {
             <Route path="admin/packages" element={<AdminPackages />} />
             <Route path="admin/banners" element={<Banners />} />
             <Route path="admin/app-content" element={<AppContent />} />
+            <Route path="admin/faqs" element={<AdminFaqs />} />
+            <Route path="admin/blogs" element={<AdminBlogs />} />
+            <Route path="admin/global-products" element={<AdminGlobalProducts />} />
           </Route>
           <Route path="branches" element={<BranchesList />} />
           <Route path="branches/:id" element={<BranchDetail />} />

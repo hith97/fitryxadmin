@@ -87,4 +87,22 @@ export const adminApi = {
 
   // Push Broadcast
   broadcastPush: (title, body) => request('/admin/push/broadcast', { method: 'POST', body: { title, body } }),
+
+  // FAQs
+  listFaqs: (page) => request('/admin/faqs', { query: { page } }),
+  createFaq: (data) => request('/admin/faqs', { method: 'POST', body: data }),
+  updateFaq: (id, data) => request(`/admin/faqs/${id}`, { method: 'PATCH', body: data }),
+  deleteFaq: (id) => request(`/admin/faqs/${id}`, { method: 'DELETE' }),
+
+  // Blogs
+  listBlogs: (page) => request('/admin/blogs', { query: { page } }),
+  createBlog: (data) => request('/admin/blogs', { method: 'POST', body: data }),
+  updateBlog: (id, data) => request(`/admin/blogs/${id}`, { method: 'PATCH', body: data }),
+  deleteBlog: (id) => request(`/admin/blogs/${id}`, { method: 'DELETE' }),
+
+  // Global Products
+  listGlobalProducts: (page) => request('/admin/global-products', { query: { page } }),
+  createGlobalProduct: (data) => request('/admin/global-products', { method: 'POST', body: data }),
+  updateGlobalProduct: (id, data) => request(`/admin/global-products/${id}`, { method: 'PATCH', body: data }),
+  deleteGlobalProduct: (id) => request(`/admin/global-products/${id}`, { method: 'DELETE' }),
 };
